@@ -1,0 +1,51 @@
+plugins {
+    id 'com.android.library'
+    id 'kotlin-android'
+}
+
+android {
+    compileSdkVersion 30
+
+    defaultConfig {
+        minSdkVersion 21
+        targetSdkVersion 30
+        versionCode 1
+        versionName "1.0"
+
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+        consumerProguardFiles "consumer-rules.pro"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
+}
+
+dependencies {
+    def okhttpLog =  '4.7.2'
+    def retrofit = '2.9.0'
+    def okhttp = '4.9.1'
+    def gson = '2.8.6'
+//    api "com.squareup.okhttp3:logging-interceptor:$okhttpLog"
+    api "com.squareup.retrofit2:converter-gson:$retrofit"
+    api "com.squareup.retrofit2:retrofit:$retrofit"
+    api "com.squareup.okhttp3:okhttp:$okhttp"
+    api "com.google.code.gson:gson:$gson"
+    compileOnly "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.5.0"
+    implementation "com.google.code.findbugs:jsr305:3.0.2"
+    implementation 'androidx.annotation:annotation:1.2.0'
+    testImplementation 'junit:junit:4.+'
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+    androidTestImplementation 'com.android.support.test:runner:1.0.2'
+    androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
+}
