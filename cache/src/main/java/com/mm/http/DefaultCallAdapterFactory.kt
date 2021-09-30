@@ -25,7 +25,7 @@ class DefaultCallAdapterFactory internal constructor(private val callbackExecuto
             return null
         }
         require(returnType is ParameterizedType) { "Call return type must be parameterized as Call<Foo> or Call<? extends Foo>" }
-        val responseType = getParameterUpperBound(0, returnType as ParameterizedType)
+        val responseType = getParameterUpperBound(0, returnType)
         val executor = if (Utils.isAnnotationPresent(
                 annotations,
                 SkipCallbackExecutor::class.java
@@ -40,10 +40,22 @@ class DefaultCallAdapterFactory internal constructor(private val callbackExecuto
                 return if (executor == null) call else ExecutorCallbackCall(executor, call)
             }
 
-            override fun rawCall(service: Class<*>, method: Method, args: Array<Any>?): okhttp3.Call {
+            override fun rawCall(service: Class<*>, method: Method, args: Array<Any>): okhttp3.Call {
                 val ser = retrofit.createService(service)
                 return try {
-                    val invoke = method.invoke(ser, *(args ?: arrayOf()))
+                    // 删除无效map数据,防止retrofit报错
+                    args.forEach {
+                        if (it is Map<*, *>) {
+                            val iterator = it.toMutableMap().entries.iterator()
+                            while (iterator.hasNext()) {
+                                val next = iterator.next()
+                                if (next.key == null || next.value == null) {
+                                    iterator.remove()
+                                }
+                            }
+                        }
+                    }
+                    val invoke = method.invoke(ser, *args)
                     val call = invoke as Call<*>
                     val request = getRawCallWithInterceptorChain(retrofit, call.request())
                     retrofit.callFactory().newCall(request)

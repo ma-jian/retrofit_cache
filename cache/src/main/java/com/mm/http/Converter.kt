@@ -18,10 +18,11 @@ interface Converter<F, T> {
     /** Creates [Converter] instances based on a type and target usage.  */
     abstract class Factory {
 
-        open fun responseBodyConverter(
+        open fun <T> responseBodyConverter(
             type: Type,
             annotations: Array<Annotation>?,
-            retrofit: RetrofitCache): Converter<ResponseBody, *>? {
+            retrofit: RetrofitCache
+        ): Converter<ResponseBody, T>? {
             return null
         }
 

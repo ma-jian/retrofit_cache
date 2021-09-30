@@ -24,7 +24,6 @@ fun <T> T.ioScope(block: suspend (T) -> Unit) = CoroutineScope(Dispatchers.IO).l
     block.invoke(this@ioScope)
 }
 
-@ExperimentalCoroutinesApi
 suspend fun <T : Any> Call<T>.asCallFlow(): Flow<T> = supervisorScope {
     channelFlow {
         offer(this@asCallFlow)
@@ -45,7 +44,6 @@ suspend fun <T : Any> Call<T>.asCallFlow(): Flow<T> = supervisorScope {
     }.flowOn(Dispatchers.Main)
 }
 
-@ExperimentalCoroutinesApi
 suspend fun <T : Any> callFlow(block: suspend () -> Call<T>) = block.invoke().asCallFlow()
 
 suspend fun <T : Any> T?.asEmitFlow() = supervisorScope {
@@ -62,7 +60,6 @@ suspend fun <T : Any> T?.asEmitFlow() = supervisorScope {
 
 suspend fun <T : Any> emitFlow(block: suspend () -> T) = block.invoke().asEmitFlow()
 
-@ExperimentalCoroutinesApi
 fun <T : Any> Call<T>.channel(): ReceiveChannel<T?> {
     val channel = Channel<T?>(5)
     enqueue(object : Callback<T?> {

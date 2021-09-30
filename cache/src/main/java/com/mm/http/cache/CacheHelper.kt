@@ -73,7 +73,7 @@ class CacheHelper internal constructor(
     }
 
 
-    fun <T> put(response: Response, res: retrofit2.Response<T?>): Boolean {
+    fun <T> put(response: Response, res: retrofit2.Response<T>): Boolean {
         if (response.hasVaryAll()) {
             return false
         }
@@ -453,7 +453,7 @@ class CacheHelper internal constructor(
         private const val ENTRY_METADATA = 0
         private const val ENTRY_BODY = 1
         private const val ENTRY_COUNT = 2
-        private const val CACHE_HEADER = "cache_header"
+        const val CACHE_HEADER = "cache_header"
         private var uniqueId = ""
         private val ignoreKey = arrayListOf<String>()
 

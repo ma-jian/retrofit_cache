@@ -1,5 +1,7 @@
 package com.mm.retrofitcache;
 
+import com.mm.http.cache.CacheHelper;
+
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;

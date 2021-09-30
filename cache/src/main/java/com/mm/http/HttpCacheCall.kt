@@ -1,5 +1,6 @@
 package com.mm.http
 
+import com.mm.http.cache.CacheConverter
 import com.mm.http.cache.CacheHelper
 import com.mm.http.cache.CacheStrategyCompute
 import com.mm.http.cache.StrategyType
@@ -21,7 +22,8 @@ class HttpCacheCall<T> internal constructor(
     private val requestFactory: RequestFactory,
     @field:GuardedBy("this") private val rawCall: Call,
     private val responseConverter: Converter<ResponseBody, T>,
-    private val cacheHelper: CacheHelper?
+    private val cacheConverter: CacheConverter<T>,
+    private val cacheHelper: CacheHelper
 ) : retrofit2.Call<T> {
 
     @Volatile
@@ -34,7 +36,7 @@ class HttpCacheCall<T> internal constructor(
     private var executed = false
 
     @Throws(IOException::class)
-    override fun execute(): Response<T?> {
+    override fun execute(): Response<T> {
         var call: Call
         synchronized(this) {
             check(!executed) { "Already executed." }
@@ -76,7 +78,7 @@ class HttpCacheCall<T> internal constructor(
             System.currentTimeMillis(),
             duration,
             timeUnit,
-            cacheHelper?.get(call.request()),
+            cacheHelper.get(call.request()),
             cacheHelper
         ).compute()
 
@@ -94,7 +96,9 @@ class HttpCacheCall<T> internal constructor(
                         val res = parseResponse(response)
                         if (res.isSuccessful) {
                             callback.onResponse(this@HttpCacheCall, res)
-                            cacheHelper?.put(response, res)
+                            cacheConverter.convert(res)?.let {
+                                cacheHelper.put(response, it)
+                            }
                         } else {
                             responseCache(cacheResponse, callback)
                         }
@@ -126,7 +130,9 @@ class HttpCacheCall<T> internal constructor(
                     val res = parseResponse(response)
                     callback?.onResponse(this@HttpCacheCall, res)
                     if (res.isSuccessful && cacheStrategy != StrategyType.NO_CACHE) {
-                        cacheHelper?.put(response, res)
+                        cacheConverter.convert(res)?.let {
+                            cacheHelper.put(response, it)
+                        }
                     }
                 } catch (e: Throwable) {
                     callFailure(e)
@@ -148,7 +154,7 @@ class HttpCacheCall<T> internal constructor(
             val res = parseResponse(cacheResponse)
             callback?.onResponse(this@HttpCacheCall, res)
         } catch (e: Throwable) {
-            callback!!.onFailure(this@HttpCacheCall, e)
+            callback?.onFailure(this@HttpCacheCall, e)
         }
     }
 
@@ -167,7 +173,7 @@ class HttpCacheCall<T> internal constructor(
     }
 
     @Throws(IOException::class)
-    fun parseResponse(response: okhttp3.Response?): Response<T?> {
+    fun parseResponse(response: okhttp3.Response?): Response<T> {
         var rawResponse = response
         if (rawResponse == null) {
             rawResponse = okhttp3.Response.Builder().request(getRawCall().request())
@@ -227,7 +233,13 @@ class HttpCacheCall<T> internal constructor(
     }
 
     override fun clone(): retrofit2.Call<T> {
-        return HttpCacheCall(requestFactory, rawCall, responseConverter, cacheHelper)
+        return HttpCacheCall(
+            requestFactory,
+            rawCall,
+            responseConverter,
+            cacheConverter,
+            cacheHelper
+        )
     }
 
     override fun request(): Request {

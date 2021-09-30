@@ -4,10 +4,10 @@ import android.os.Handler
 import android.os.Looper
 import android.text.TextUtils
 import com.mm.http.ServiceMethod.Companion.parseAnnotations
+import com.mm.http.cache.CacheConverter
 import com.mm.http.cache.CacheHelper
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
-import okhttp3.RequestBody
 import okhttp3.ResponseBody
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
@@ -30,6 +30,7 @@ open class RetrofitCache internal constructor(
     private val retrofitBuilder: Retrofit.Builder,
     internal val cache: CacheHelper,
     private val converterFactories: List<Converter.Factory>,
+    private val cacheConverterFactories: List<CacheConverter.Factory>,
     private val callAdapterFactories: List<CacheCallAdapter.Factory>,
     private val callbackExecutor: Executor?,
     private val validateEagerly: Boolean
@@ -50,7 +51,7 @@ open class RetrofitCache internal constructor(
                     if (method.declaringClass == Any::class.java) {
                         return method.invoke(this, *(args ?: arrayOf()))
                     }
-                    return loadServiceMethod(service, method).invoke(args)
+                    return loadServiceMethod(service, method).invoke(args ?: arrayOf())
                 }
             }) as T
     }
@@ -118,7 +119,9 @@ open class RetrofitCache internal constructor(
      * @throws IllegalArgumentException if no call adapter available for `type`.
      */
     private fun nextCallAdapter(
-        skipPast: CacheCallAdapter.Factory?, returnType: Type, annotations: Array<Annotation>
+        skipPast: CacheCallAdapter.Factory?,
+        returnType: Type,
+        annotations: Array<Annotation>
     ): CacheCallAdapter<*, *> {
         Objects.requireNonNull(returnType, "returnType == null")
         Objects.requireNonNull(annotations, "annotations == null")
@@ -171,40 +174,34 @@ open class RetrofitCache internal constructor(
         return okHttpClient
     }
 
-
     /**
-     * Returns a [Converter] for `type` to [RequestBody] from the available
-     * [factories][.converterFactories] except `skipPast`.
+     * Returns a [CacheConverter] for [ResponseBody] to `type` from the available
+     * [factories][.converterFactories].
      *
      * @throws IllegalArgumentException if no converter available for `type`.
      */
-    private fun <T> nextRequestBodyConverter(
-        skipPast: Converter.Factory?,
-        type: Type,
-        parameterAnnotations: Array<Annotation>?,
-        methodAnnotations: Array<Annotation>
-    ): Converter<T, ResponseBody> {
-        Objects.requireNonNull(type, "type == null")
-        Objects.requireNonNull(parameterAnnotations, "parameterAnnotations == null")
-        Objects.requireNonNull(methodAnnotations, "methodAnnotations == null")
-        val start = converterFactories.indexOf(skipPast) + 1
-        for (i in start until converterFactories.size) {
-            val converter = converterFactories[i].requestBodyConverter(
-                type,
-                parameterAnnotations,
-                methodAnnotations,
-                this
-            )
+    internal fun <T> responseCacheConverter(type: Type): CacheConverter<T> {
+        return nextCacheResponseConverter<T>(null, type)
+    }
+
+    private fun <T> nextCacheResponseConverter(
+        skipPast: CacheConverter.Factory?,
+        type: Type
+    ): CacheConverter<T> {
+        val start: Int = cacheConverterFactories.indexOf(skipPast) + 1
+        for (i in start until cacheConverterFactories.size) {
+            val converter = cacheConverterFactories[i].converterCache<T>(retrofit = this)
             if (converter != null) {
-                return converter as Converter<T, ResponseBody>
+                return converter
             }
         }
-        val builder =
-            StringBuilder("Could not locate RequestBody converter for ").append(type).append(".\n")
+        val builder = java.lang.StringBuilder("Could not locate Cache converter for ")
+            .append(type)
+            .append(".\n")
         if (skipPast != null) {
             builder.append("  Skipped:")
             for (i in 0 until start) {
-                builder.append("\n   * ").append(converterFactories[i].javaClass.name)
+                builder.append("\n   * ").append(converterFactories[i]::class.java.name)
             }
             builder.append('\n')
         }
@@ -212,10 +209,10 @@ open class RetrofitCache internal constructor(
         var i = start
         val count = converterFactories.size
         while (i < count) {
-            builder.append("\n   * ").append(converterFactories[i].javaClass.name)
+            builder.append("\n   * ").append(converterFactories[i]::class.java.name)
             i++
         }
-        throw IllegalArgumentException(builder.toString())
+        throw java.lang.IllegalArgumentException(builder.toString())
     }
 
     /**
@@ -245,9 +242,9 @@ open class RetrofitCache internal constructor(
         val start = converterFactories.indexOf(skipPast) + 1
         val count = converterFactories.size
         for (i in start until count) {
-            val converter = converterFactories[i].responseBodyConverter(type, annotations, this)
+            val converter = converterFactories[i].responseBodyConverter<T>(type, annotations, this)
             if (converter != null) {
-                return converter as Converter<ResponseBody, T>
+                return converter
             }
         }
 
@@ -285,6 +282,7 @@ open class RetrofitCache internal constructor(
     class Builder constructor() {
         private var cache: CacheHelper? = null
         private val converterFactories: MutableList<Converter.Factory?> = ArrayList()
+        private val cacheConverterFactories: MutableList<CacheConverter.Factory?> = ArrayList()
         private val callAdapterFactories: MutableList<CacheCallAdapter.Factory?> = ArrayList()
         private val interceptors: MutableList<Interceptor> = ArrayList()
         private var callbackExecutor: Executor? = null
@@ -306,6 +304,13 @@ open class RetrofitCache internal constructor(
             for (i in 0..count) {
                 callAdapterFactories.add(retrofitCache.callAdapterFactories[i])
             }
+
+            // Do not add the default DefaultCallAdapterFactory.
+            val num = retrofitCache.cacheConverterFactories.size - 1
+            for (i in 0..num) {
+                cacheConverterFactories.add(retrofitCache.cacheConverterFactories[i])
+            }
+
             callbackExecutor = retrofitCache.callbackExecutor
             validateEagerly = retrofitCache.validateEagerly
         }
@@ -324,6 +329,13 @@ open class RetrofitCache internal constructor(
         fun client(client: OkHttpClient?) = apply {
             require(client != null) { "client == null" }
             this.okHttpClient = client
+        }
+
+        /**
+         * Add cache converter factory for save cache
+         */
+        fun addCacheConverterFactory(factory: CacheConverter.Factory?) = apply {
+            cacheConverterFactories.add(Objects.requireNonNull(factory, "factory == null"))
         }
 
         /**
@@ -393,13 +405,18 @@ open class RetrofitCache internal constructor(
 
             // Make a defensive copy of the adapters and add the default Call adapter.
             val callAdapterFactories: MutableList<CacheCallAdapter.Factory> = ArrayList(
-                callAdapterFactories
+                this.callAdapterFactories
             )
             callAdapterFactories.add(DefaultCallAdapterFactory(callbackExecutor))
-            val converterFactories: MutableList<Converter.Factory> = ArrayList(
-                converterFactories
-            )
+
+            val converterFactories: MutableList<Converter.Factory> =
+                ArrayList(this.converterFactories)
             converterFactories.add(CacheGsonConverterFactory.create())
+
+            val cacheConverterFactories: MutableList<CacheConverter.Factory> =
+                ArrayList(this.cacheConverterFactories)
+            cacheConverterFactories.add(DefaultCacheConverterFactory())
+
             if (okHttpClient == null) {
                 val builder: OkHttpClient.Builder = OkHttpClient.Builder()
                     .connectTimeout(30, TimeUnit.SECONDS)
@@ -422,6 +439,7 @@ open class RetrofitCache internal constructor(
                 builder,
                 cache!!,
                 Collections.unmodifiableList(converterFactories),
+                Collections.unmodifiableList(cacheConverterFactories),
                 Collections.unmodifiableList(callAdapterFactories),
                 callbackExecutor,
                 validateEagerly

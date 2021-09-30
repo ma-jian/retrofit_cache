@@ -22,9 +22,8 @@ import java.nio.charset.StandardCharsets
  */
 internal class CacheGsonConverterFactory private constructor(private val gson: Gson) : Converter.Factory() {
 
-    override fun responseBodyConverter(type: Type, annotations: Array<Annotation>?, retrofit: RetrofitCache):
-            Converter<ResponseBody, *> {
-        val adapter = gson.getAdapter(TypeToken.get(type))
+    override fun <T> responseBodyConverter(type: Type, annotations: Array<Annotation>?, retrofit: RetrofitCache): Converter<ResponseBody, T> {
+        val adapter: TypeAdapter<T> = gson.getAdapter(TypeToken.get(type) as TypeToken<T>)
         return GsonResponseBodyConverter(gson, adapter)
     }
 
