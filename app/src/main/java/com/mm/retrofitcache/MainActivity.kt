@@ -49,7 +49,7 @@ class MainActivity : AppCompatActivity() {
     private fun createCache(): RetrofitCache {
         val cacheHelper = CacheHelper(cacheDir, Long.MAX_VALUE)
         return RetrofitCache.Builder().cache(cacheHelper)
-            .addInterceptor(HeaderInterceptor())
+            .addInterceptor(LogInterceptor(this))
             .addCacheConverterFactory(CacheConvertFactory())
             .build()
     }

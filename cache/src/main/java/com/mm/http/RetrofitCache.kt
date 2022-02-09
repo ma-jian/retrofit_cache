@@ -422,10 +422,8 @@ open class RetrofitCache internal constructor(
                     .connectTimeout(30, TimeUnit.SECONDS)
                     .writeTimeout(30, TimeUnit.SECONDS)
                     .readTimeout(30, TimeUnit.SECONDS)
-                    .sslSocketFactory(
-                        SslSocketFactory.sSLSocketFactory,
-                        SslSocketFactory.trustManager
-                    )
+                    .addInterceptor(TimeOutInterceptor())
+                    .sslSocketFactory(SslSocketFactory.sSLSocketFactory, SslSocketFactory.trustManager)
                 for (interceptor in interceptors) {
                     builder.addInterceptor(interceptor)
                 }
