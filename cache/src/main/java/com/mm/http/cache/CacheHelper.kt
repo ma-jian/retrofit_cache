@@ -5,7 +5,6 @@ import com.google.gson.Gson
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.internal.EMPTY_HEADERS
-import okhttp3.internal.cache.CacheRequest
 import okhttp3.internal.closeQuietly
 import okhttp3.internal.concurrent.TaskRunner
 import okhttp3.internal.http.StatusLine
@@ -73,7 +72,7 @@ class CacheHelper internal constructor(
     }
 
 
-    fun <T> put(response: Response, res: retrofit2.Response<T>): Boolean {
+    fun <T> put(response: Response, res: retrofit2.Response<T?>): Boolean {
         if (response.hasVaryAll()) {
             return false
         }
@@ -333,9 +332,9 @@ class CacheHelper internal constructor(
     }
 
     private class CacheResponseBody(
-            val snapshot: DiskLruCacheHelper.Snapshot,
-            private val contentType: String?,
-            private val contentLength: String?
+        val snapshot: DiskLruCacheHelper.Snapshot,
+        private val contentType: String?,
+        private val contentLength: String?
     ) : ResponseBody() {
         private val bodySource: BufferedSource
 
@@ -355,42 +354,6 @@ class CacheHelper internal constructor(
         override fun contentLength(): Long = contentLength?.toLongOrDefault(-1L) ?: -1L
 
         override fun source(): BufferedSource = bodySource
-    }
-
-    private inner class RealCacheRequest(
-            private val editor: DiskLruCacheHelper.Editor
-    ) : CacheRequest {
-        private val cacheOut: Sink = editor.newSink(ENTRY_BODY)
-        private val body: Sink
-        var done = false
-
-        init {
-            this.body = object : ForwardingSink(cacheOut) {
-                @Throws(IOException::class)
-                override fun close() {
-                    synchronized(this@CacheHelper) {
-                        if (done) return
-                        done = true
-                    }
-                    super.close()
-                    editor.commit()
-                }
-            }
-        }
-
-        override fun abort() {
-            synchronized(this@CacheHelper) {
-                if (done) return
-                done = true
-            }
-            cacheOut.closeQuietly()
-            try {
-                editor.abort()
-            } catch (_: IOException) {
-            }
-        }
-
-        override fun body(): Sink = body
     }
 
     @Throws(IOException::class)
@@ -470,7 +433,7 @@ class CacheHelper internal constructor(
          */
         @JvmStatic
         fun uniqueId(id: String) {
-            this.uniqueId = id
+            uniqueId = id
         }
 
         @JvmStatic

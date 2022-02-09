@@ -1,6 +1,7 @@
 package com.mm.retrofitcache
 
 import com.mm.http.HOST
+import com.mm.http.TimeOut
 import com.mm.http.cache.CacheStrategy
 import com.mm.http.cache.StrategyType
 import retrofit2.Call
