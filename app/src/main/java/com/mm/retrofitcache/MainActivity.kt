@@ -5,11 +5,8 @@ import android.os.Bundle
 import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import com.mm.http.RetrofitCache
-import com.mm.http.asCallFlow
 import com.mm.http.cache.CacheHelper
-import com.mm.http.uiScope
 import com.mm.retrofitcache.databinding.ActivityMainBinding
-import kotlinx.coroutines.flow.collect
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -32,17 +29,8 @@ class MainActivity : AppCompatActivity() {
 
                 override fun onFailure(call: Call<Any>, t: Throwable) {
                     Log.e(tag, Log.getStackTraceString(t))
-                    //                    binding.text.text = t.stackTraceToString()
                 }
             })
-        }
-
-        binding.flow.setOnClickListener {
-            uiScope {
-                service.getUser(binding.input.text.toString()).asCallFlow().collect {
-                    binding.text.text = it.toString()
-                }
-            }
         }
     }
 

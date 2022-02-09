@@ -3,7 +3,6 @@ package com.mm.retrofitcache
 import android.util.Log
 import com.mm.http.RetrofitCache
 import com.mm.http.cache.CacheConverter
-import retrofit2.Response
 
 /**
  * Created by : majian
@@ -13,15 +12,11 @@ import retrofit2.Response
 
 class CacheConvertFactory : CacheConverter.Factory() {
 
-    override fun <T> converterCache(retrofit: RetrofitCache): CacheConverter<T>? {
-        return object : CacheConverter<T> {
-            override fun convert(response: Response<T>): Response<T>? {
-                val body = response.body()
-                Log.e("CacheConvertFactory ：", body.toString())
-                return response
-            }
-
+    override fun converterCache(retrofit: RetrofitCache): CacheConverter<*>? {
+        return CacheConverter<Any> { response ->
+            val body = response.body()
+            Log.e("CacheConvertFactory ：", body.toString())
+            response
         }
     }
-
 }
