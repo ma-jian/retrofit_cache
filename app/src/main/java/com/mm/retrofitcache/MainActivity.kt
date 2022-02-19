@@ -39,9 +39,11 @@ class MainActivity : AppCompatActivity() {
 
         binding.flow.setOnClickListener {
             uiScope {
-                service.getUser(binding.input.text.toString()).asCallFlow().collect {
-                    binding.text.text = it.toString()
-                }
+                val user = service.getUser(binding.input.text.toString())
+                binding.text.text = user.toString()
+//                service.getUser(binding.input.text.toString()).asCallFlow().collect {
+//                    binding.text.text = it.toString()
+//                }
             }
         }
     }

@@ -35,6 +35,7 @@ open class RetrofitCache internal constructor(
     private val callbackExecutor: Executor?,
     private val validateEagerly: Boolean
 ) {
+    internal lateinit var retrofit: Retrofit
     private val serviceMethodCache: MutableMap<Method, ServiceMethod<*>> = ConcurrentHashMap()
 
     // Single-interface proxy creation guarded by parameter safety.
@@ -163,7 +164,8 @@ open class RetrofitCache internal constructor(
     internal fun <T> createService(clazz: Class<T>): T {
         val host = clazz.getAnnotation(HOST::class.java)?.value ?: ""
         require(!TextUtils.isEmpty(host)) { "请指定相应的host参数 HOST.class value" }
-        return retrofitBuilder.baseUrl(host).build().create(clazz)
+        retrofit = retrofitBuilder.baseUrl(host).build()
+        return retrofit.create(clazz)
     }
 
     /**

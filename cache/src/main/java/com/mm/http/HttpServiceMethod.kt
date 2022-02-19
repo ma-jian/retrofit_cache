@@ -2,10 +2,11 @@ package com.mm.http
 
 import com.mm.http.cache.CacheConverter
 import com.mm.http.cache.CacheHelper
-import okhttp3.Response
 import okhttp3.ResponseBody
 import retrofit2.Call
+import retrofit2.Response
 import java.lang.reflect.Method
+import java.lang.reflect.ParameterizedType
 import java.lang.reflect.Type
 
 /**
@@ -23,9 +24,9 @@ internal abstract class HttpServiceMethod<ResponseT, ReturnT>(
     override fun invoke(args: Array<Any>): ReturnT {
         val service = requestFactory.service
         val method = requestFactory.method
-        val rawCall = callAdapter.rawCall(service, method, args)
-        val call: Call<ResponseT> =
-            HttpCacheCall(requestFactory, rawCall, responseConverter, cacheConverter, cache)
+        val isKotlinSuspendFunction = requestFactory.isKotlinSuspendFunction
+        val rawCall = callAdapter.rawCall(service, method, args,isKotlinSuspendFunction)
+        val call: Call<ResponseT> = HttpCacheCall(requestFactory, rawCall, responseConverter, cacheConverter, cache)
         return adapt(call, args)
     }
 
@@ -54,7 +55,22 @@ internal abstract class HttpServiceMethod<ResponseT, ReturnT>(
         fun <ResponseT, ReturnT> parseAnnotations(retrofit: RetrofitCache, method: Method, requestFactory: RequestFactory):
                 HttpServiceMethod<ResponseT, ReturnT> {
             val annotations = method.annotations
-            val adapterType = method.genericReturnType
+            val adapterType: Type
+            val isKotlinSuspendFunction: Boolean = requestFactory.isKotlinSuspendFunction
+            var continuationWantsResponse = false
+            if (isKotlinSuspendFunction) {
+                val parameterTypes = method.genericParameterTypes
+                var responseType = Utils.getParameterLowerBound(0, parameterTypes[parameterTypes.size - 1] as ParameterizedType)
+                if (Utils.getRawType(responseType) == retrofit2.Response::class.java && responseType is ParameterizedType) {
+                    // Unwrap the actual body type from Response<T>.
+                    responseType = Utils.getParameterUpperBound(0, responseType as ParameterizedType)
+                    continuationWantsResponse = true
+                }
+                adapterType = Utils.ParameterizedTypeImpl(null, Call::class.java, responseType)
+            } else {
+                adapterType = method.genericReturnType
+            }
+
             val callAdapter: CacheCallAdapter<ResponseT, ReturnT> = createCallAdapter(retrofit, method, adapterType, annotations)
             val responseType = callAdapter.responseType()
             if (responseType === Response::class.java) {
@@ -100,24 +116,13 @@ internal abstract class HttpServiceMethod<ResponseT, ReturnT>(
             }
         }
 
-        private fun <ResponseT, ReturnT> createCallAdapter(
-            retrofit: RetrofitCache,
-            method: Method,
-            returnType: Type,
-            annotations: Array<Annotation>
-        ): CacheCallAdapter<ResponseT, ReturnT> {
+        private fun <ResponseT, ReturnT> createCallAdapter(retrofit: RetrofitCache, method: Method,
+                                                           returnType: Type, annotations: Array<Annotation>):
+                CacheCallAdapter<ResponseT, ReturnT> {
             return try {
-                retrofit.callAdapter(
-                    returnType,
-                    annotations
-                ) as CacheCallAdapter<ResponseT, ReturnT>
+                retrofit.callAdapter(returnType, annotations) as CacheCallAdapter<ResponseT, ReturnT>
             } catch (e: RuntimeException) { // Wide exception range because factories are user code.
-                throw Utils.methodError(
-                    method,
-                    e,
-                    "Unable to create call adapter for %s",
-                    returnType
-                )
+                throw Utils.methodError(method, e, "Unable to create call adapter for %s", returnType)
             }
         }
 
@@ -128,12 +133,7 @@ internal abstract class HttpServiceMethod<ResponseT, ReturnT>(
             return try {
                 retrofit.responseBodyConverter(responseType, annotations)
             } catch (e: RuntimeException) { // Wide exception range because factories are user code.
-                throw Utils.methodError(
-                    method,
-                    e,
-                    "Unable to create converter for %s",
-                    responseType
-                )
+                throw Utils.methodError(method, e, "Unable to create converter for %s", responseType)
             }
         }
     }

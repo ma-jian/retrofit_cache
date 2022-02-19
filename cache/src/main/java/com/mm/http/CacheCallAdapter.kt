@@ -15,7 +15,7 @@ interface CacheCallAdapter<R, T> {
 
     fun adapt(call: Call<R>): T
 
-    fun rawCall(service: Class<*>, method: Method, args: Array<Any>): okhttp3.Call
+    fun rawCall(service: Class<*>, method: Method, args: Array<Any>, isKotlinSuspendFunction: Boolean): okhttp3.Call
 
     abstract class Factory {
         /**

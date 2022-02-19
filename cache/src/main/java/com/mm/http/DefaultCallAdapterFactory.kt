@@ -3,16 +3,12 @@ package com.mm.http
 import android.util.Log
 import okhttp3.Request
 import okio.Timeout
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
-import retrofit2.SkipCallbackExecutor
+import retrofit2.*
 import java.io.IOException
-import java.lang.reflect.Method
-import java.lang.reflect.ParameterizedType
-import java.lang.reflect.Type
+import java.lang.reflect.*
 import java.util.*
 import java.util.concurrent.Executor
+import kotlin.coroutines.Continuation
 
 /**
  * Created by : majian
@@ -26,11 +22,7 @@ class DefaultCallAdapterFactory internal constructor(private val callbackExecuto
         }
         require(returnType is ParameterizedType) { "Call return type must be parameterized as Call<Foo> or Call<? extends Foo>" }
         val responseType = getParameterUpperBound(0, returnType)
-        val executor = if (Utils.isAnnotationPresent(
-                annotations,
-                SkipCallbackExecutor::class.java
-            )
-        ) null else callbackExecutor
+        val executor = if (Utils.isAnnotationPresent(annotations, SkipCallbackExecutor::class.java)) null else callbackExecutor
         return object : CacheCallAdapter<Any, Call<Any>?> {
             override fun responseType(): Type {
                 return responseType
@@ -40,9 +32,9 @@ class DefaultCallAdapterFactory internal constructor(private val callbackExecuto
                 return if (executor == null) call else ExecutorCallbackCall(executor, call)
             }
 
-            override fun rawCall(service: Class<*>, method: Method, args: Array<Any>): okhttp3.Call {
+            override fun rawCall(service: Class<*>, method: Method, args: Array<Any>, isKotlinSuspendFunction: Boolean): okhttp3.Call {
                 val ser = retrofit.createService(service)
-                return try {
+                try {
                     // 删除无效map数据,防止retrofit报错
                     args.forEach {
                         if (it is Map<*, *>) {
@@ -55,10 +47,33 @@ class DefaultCallAdapterFactory internal constructor(private val callbackExecuto
                             }
                         }
                     }
-                    val invoke = method.invoke(ser, *args)
-                    val call = invoke as Call<*>
-                    val request = getRawCallWithInterceptorChain(retrofit, call.request())
-                    retrofit.callFactory().newCall(request)
+
+                    if (isKotlinSuspendFunction) {
+                        //执行retrofit invoke
+                        val continuation = args[args.size - 1] as Continuation<*>
+                        val clazz = Class.forName("retrofit2.HttpServiceMethod")
+                        Proxy.newProxyInstance(clazz.classLoader, clazz.interfaces, object : InvocationHandler {
+                            override fun invoke(proxy: Any?, method: Method, args: Array<out Any>): Any {
+                                if ("adapt" == method.name) {
+                                    args.forEach {
+                                        if (it is Call<*>) {
+                                            val request = getRawCallWithInterceptorChain(retrofit, it.request())
+                                            retrofit.callFactory().newCall(request)
+                                        }
+                                    }
+                                }
+                                return method.invoke(proxy, *args)
+                            }
+                        })
+                        val factory = retrofit.retrofit.callAdapterFactories()[0]
+                        //todo 未完成
+                        throw IllegalArgumentException("不支持该类型")
+                    } else {
+                        val invoke = method.invoke(ser, *args)
+                        val call = invoke as Call<*>
+                        val request = getRawCallWithInterceptorChain(retrofit, call.request())
+                        return retrofit.callFactory().newCall(request)
+                    }
                 } catch (e: Exception) {
                     throw IllegalArgumentException(Log.getStackTraceString(e))
                 }

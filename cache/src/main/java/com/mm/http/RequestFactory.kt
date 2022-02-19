@@ -6,6 +6,7 @@ import com.mm.http.cache.IgnoreKey
 import com.mm.http.cache.StrategyType
 import java.lang.reflect.Method
 import java.util.concurrent.TimeUnit
+import kotlin.coroutines.Continuation
 
 /**
  * Created by : majian
@@ -37,6 +38,7 @@ class RequestFactory private constructor(
         private var duration = 24L
         private var timeUnit = TimeUnit.HOURS
         private var ignoreKey = listOf<String>()
+        private var isKotlinSuspendFunction: Boolean = false
         fun build(): RequestFactory {
             /**
              * 缓存策略优先级： 忽略缓存 > 方法策略 > 类策略
