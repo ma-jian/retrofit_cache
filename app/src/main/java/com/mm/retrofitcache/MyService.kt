@@ -17,5 +17,5 @@ interface MyService {
 
     @CacheStrategy(value = StrategyType.CACHE_AND_NETWORK)
     @GET("users/{user}")
-    fun getUser(@Path("user") user: String): Call<Any>
+    suspend fun getUser(@Path("user") user: String): Any
 }

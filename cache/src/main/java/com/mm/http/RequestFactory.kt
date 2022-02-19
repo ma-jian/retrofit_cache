@@ -18,7 +18,8 @@ class RequestFactory private constructor(
     @param:StrategyType private val strategy: Int,
     private val duration: Long,
     private val timeUnit: TimeUnit,
-    private val ignoreKey: List<String>
+    private val ignoreKey: List<String>,
+    val isKotlinSuspendFunction: Boolean
 ) {
     fun cacheRequest(): CacheRequest {
         return CacheRequest.Builder()
@@ -65,7 +66,12 @@ class RequestFactory private constructor(
                     ignoreKey = it.value.asList()
                 }
             }
-            return RequestFactory(service, method, strategy, duration, timeUnit, ignoreKey)
+
+            val parameterTypes = method.genericParameterTypes
+            if (Utils.getRawType(parameterTypes[parameterTypes.size - 1]) == Continuation::class.java) {
+                isKotlinSuspendFunction = true
+            }
+            return RequestFactory(service, method, strategy, duration, timeUnit, ignoreKey, isKotlinSuspendFunction)
         }
     }
 

@@ -37,23 +37,24 @@ internal abstract class HttpServiceMethod<ResponseT, ReturnT>(
         responseConverter: Converter<ResponseBody, ResponseT>,
         cacheConverter: CacheConverter<ResponseT>,
         private val callAdapter: CacheCallAdapter<ResponseT, ReturnT>,
-        cache: CacheHelper
-    ) : HttpServiceMethod<ResponseT, ReturnT>(
-        requestFactory,
-        callAdapter,
-        responseConverter,
-        cacheConverter,
-        cache
-    ) {
+        cache: CacheHelper) : HttpServiceMethod<ResponseT, ReturnT>(requestFactory, callAdapter, responseConverter, cacheConverter, cache) {
+
         override fun adapt(call: Call<ResponseT>, args: Array<Any>): ReturnT {
             return callAdapter.adapt(call)
         }
     }
 
+//    internal class SuspendForResponse<ResponseT, ReturnT>(requestFactory: RequestFactory, responseConverter: Converter<ResponseBody, ResponseT>, cacheConverter: CacheConverter<ResponseT>, private val callAdapter: CacheCallAdapter<ResponseT, ReturnT>, cache: CacheHelper) : HttpServiceMethod<ResponseT, ReturnT>(requestFactory, callAdapter, responseConverter, cacheConverter, cache) {
+//
+//        override fun adapt(call: Call<ResponseT>, args: Array<Any>): ReturnT {
+//
+//        }
+//    }
+
+
     companion object {
         @JvmStatic
-        fun <ResponseT, ReturnT> parseAnnotations(retrofit: RetrofitCache, method: Method, requestFactory: RequestFactory):
-                HttpServiceMethod<ResponseT, ReturnT> {
+        fun <ResponseT, ReturnT> parseAnnotations(retrofit: RetrofitCache, method: Method, requestFactory: RequestFactory): HttpServiceMethod<ResponseT, ReturnT> {
             val annotations = method.annotations
             val adapterType: Type
             val isKotlinSuspendFunction: Boolean = requestFactory.isKotlinSuspendFunction
@@ -74,29 +75,21 @@ internal abstract class HttpServiceMethod<ResponseT, ReturnT>(
             val callAdapter: CacheCallAdapter<ResponseT, ReturnT> = createCallAdapter(retrofit, method, adapterType, annotations)
             val responseType = callAdapter.responseType()
             if (responseType === Response::class.java) {
-                throw Utils.methodError(
-                    method,
-                    "'" + Utils.getRawType(responseType).name + "' is not a valid response body type. Did you mean ResponseBody?"
-                )
+                throw Utils.methodError(method, "'" + Utils.getRawType(responseType).name + "' is not a valid response body type. Did you mean ResponseBody?")
             }
             if (responseType === retrofit2.Response::class.java) {
-                throw Utils.methodError(
-                    method,
-                    "Response must include generic type (e.g., Response<String>)"
-                )
+                throw Utils.methodError(method, "Response must include generic type (e.g., Response<String>)")
             }
             val cache = retrofit.cache
-            val responseConverter: Converter<ResponseBody, ResponseT> =
-                createResponseConverter(retrofit, method, responseType)
-            val cacheConverter: CacheConverter<ResponseT> =
-                createCacheConverter(retrofit, method, responseType)
-            return CallAdapted(
-                requestFactory,
-                responseConverter,
-                cacheConverter,
-                callAdapter,
-                cache
-            )
+            val responseConverter: Converter<ResponseBody, ResponseT> = createResponseConverter(retrofit, method, responseType)
+            val cacheConverter: CacheConverter<ResponseT> = createCacheConverter(retrofit, method, responseType)
+            return CallAdapted(requestFactory, responseConverter, cacheConverter, callAdapter, cache)
+//            if (!isKotlinSuspendFunction) {
+//                return CallAdapted(requestFactory, responseConverter, cacheConverter, callAdapter, cache)
+//            } else if (continuationWantsResponse) {
+//                return SuspendForResponse(requestFactory, responseConverter, cacheConverter, callAdapter, cache)
+//            } else {
+//            }
         }
 
         private fun <ResponseT> createCacheConverter(

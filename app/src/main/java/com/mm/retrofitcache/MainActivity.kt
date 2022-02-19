@@ -1,8 +1,6 @@
 package com.mm.retrofitcache
 
-import android.annotation.SuppressLint
 import android.os.Bundle
-import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import com.mm.http.RetrofitCache
 import com.mm.http.asCallFlow
@@ -10,9 +8,6 @@ import com.mm.http.cache.CacheHelper
 import com.mm.http.uiScope
 import com.mm.retrofitcache.databinding.ActivityMainBinding
 import kotlinx.coroutines.flow.collect
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
 
 class MainActivity : AppCompatActivity() {
     val tag = "MainActivity"
@@ -23,19 +18,19 @@ class MainActivity : AppCompatActivity() {
 
         val retrofit = createCache()
         val service = retrofit.create(MyService::class.java)
-        binding.button.setOnClickListener {
-            service.getUser(binding.input.text.toString()).enqueue(object : Callback<Any> {
-                @SuppressLint("SetTextI18n")
-                override fun onResponse(call: Call<Any>, response: Response<Any>) {
-                    binding.text.text = "${response.headers()}\n${response.body()}"
-                }
-
-                override fun onFailure(call: Call<Any>, t: Throwable) {
-                    Log.e(tag, Log.getStackTraceString(t))
-                    //                    binding.text.text = t.stackTraceToString()
-                }
-            })
-        }
+//        binding.button.setOnClickListener {
+//            service.getUser(binding.input.text.toString()).enqueue(object : Callback<Any> {
+//                @SuppressLint("SetTextI18n")
+//                override fun onResponse(call: Call<Any>, response: Response<Any>) {
+//                    binding.text.text = "${response.headers()}\n${response.body()}"
+//                }
+//
+//                override fun onFailure(call: Call<Any>, t: Throwable) {
+//                    Log.e(tag, Log.getStackTraceString(t))
+//                    //                    binding.text.text = t.stackTraceToString()
+//                }
+//            })
+//        }
 
         binding.flow.setOnClickListener {
             uiScope {

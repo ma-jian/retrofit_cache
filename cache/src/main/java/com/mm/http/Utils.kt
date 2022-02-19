@@ -97,4 +97,63 @@ object Utils {
             }
         }
     }
+
+    fun getParameterLowerBound(index: Int, type: ParameterizedType): Type {
+        val paramType = type.actualTypeArguments[index]
+        return if (paramType is WildcardType) {
+            paramType.lowerBounds[0]
+        } else paramType
+    }
+
+    internal class ParameterizedTypeImpl(
+        ownerType: Type?,
+        rawType: Type,
+        vararg typeArguments: Type
+    ) : ParameterizedType {
+        private val ownerType: Type?
+        private val rawType: Type
+        private val typeArguments: Array<Type>
+
+        override fun getActualTypeArguments(): Array<Type> {
+            return typeArguments.clone()
+        }
+
+        override fun getRawType(): Type {
+            return rawType
+        }
+
+        override fun getOwnerType(): Type? {
+            return ownerType
+        }
+
+        override fun equals(other: Any?): Boolean {
+            return other is ParameterizedType
+        }
+
+        override fun hashCode(): Int {
+            return (typeArguments.contentHashCode()
+                    xor rawType.hashCode()
+                    xor (ownerType?.hashCode() ?: 0))
+        }
+
+        init {
+            // Require an owner type if the raw type needs it.
+            require(
+                !(rawType is Class<*>
+                        && ownerType == null != (rawType.enclosingClass == null))
+            )
+            for (typeArgument in typeArguments) {
+                Objects.requireNonNull(typeArgument, "typeArgument == null")
+                checkNotPrimitive(typeArgument)
+            }
+            this.ownerType = ownerType
+            this.rawType = rawType
+            this.typeArguments = typeArguments.clone() as Array<Type>
+        }
+    }
+
+    fun checkNotPrimitive(type: Type?) {
+        require(!(type is Class<*> && type.isPrimitive))
+    }
+
 }
