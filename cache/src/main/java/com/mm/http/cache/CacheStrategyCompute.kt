@@ -7,6 +7,7 @@ import java.util.concurrent.TimeUnit
 /**
  * Created by : majian
  * Date : 2021/8/24
+ * 缓存计算
  */
 class CacheStrategyCompute internal constructor(val cacheResponse: Response?) {
 

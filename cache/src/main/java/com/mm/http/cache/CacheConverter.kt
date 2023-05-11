@@ -9,6 +9,7 @@ import retrofit2.Response
  */
 
 interface CacheConverter<T> {
+
     fun convert(response: Response<T>): Response<T>?
 
     /**

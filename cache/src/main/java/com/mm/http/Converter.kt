@@ -32,10 +32,8 @@ interface Converter<F, T> {
          * specified by [@Body][Body], [@Part][Part], and [@PartMap][PartMap] values.
          */
         open fun requestBodyConverter(
-            type: Type,
-            parameterAnnotations: Array<Annotation>?,
-            methodAnnotations: Array<Annotation>?,
-            retrofit: RetrofitCache
+            type: Type, parameterAnnotations: Array<Annotation>?,
+            methodAnnotations: Array<Annotation>?, retrofit: RetrofitCache
         ): Converter<*, RequestBody>? {
             return null
         }

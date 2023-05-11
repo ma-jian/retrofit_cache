@@ -14,7 +14,7 @@ import java.util.concurrent.TimeUnit
  */
 class RealRequestInterceptorChain internal constructor(
     private val call: Call,
-    private val cache: CacheHelper,
+    private val cache: CacheHelper?,
     private val interceptors: List<Interceptor>,
     private val index: Int,
     private val request: Request,
@@ -48,11 +48,11 @@ class RealRequestInterceptorChain internal constructor(
             val interceptor = interceptors[index]
             return interceptor.intercept(next)
         }
-        val response = cache.get(request)
+        val response = cache?.get(request)
         return response?.newBuilder()?.request(request)?.build()
             ?: Response.Builder().request(request)
                 .protocol(Protocol.HTTP_1_1)
-                .code(HttpURLConnection.HTTP_GATEWAY_TIMEOUT)
+                .code(HttpURLConnection.HTTP_VERSION)
                 .message("Unsatisfiable Request (only-if-cached)")
                 .body(EMPTY_RESPONSE).build()
     }

@@ -80,7 +80,7 @@ internal class CacheGsonConverterFactory private constructor(private val gson: G
     }
 
     companion object {
-        @JvmOverloads
+        @JvmStatic
         fun create(gson: Gson? = Gson()): CacheGsonConverterFactory {
             if (gson == null) throw NullPointerException("gson == null")
             return CacheGsonConverterFactory(gson)

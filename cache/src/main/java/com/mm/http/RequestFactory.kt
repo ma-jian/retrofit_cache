@@ -42,7 +42,7 @@ class RequestFactory private constructor(
         private var isKotlinSuspendFunction: Boolean = false
         fun build(): RequestFactory {
             /**
-             * 缓存策略优先级： 忽略缓存 > 方法策略 > 类策略
+             * 缓存策略优先级： [IgnoreCache]忽略缓存 > 方法策略 > 类策略
              */
             if (service.isAnnotationPresent(CacheStrategy::class.java)) {
                 service.getAnnotation(CacheStrategy::class.java)?.let {

@@ -1,18 +1,27 @@
 package com.mm.http
 
+import androidx.annotation.GuardedBy
 import com.mm.http.cache.CacheConverter
 import com.mm.http.cache.CacheHelper
 import com.mm.http.cache.CacheStrategyCompute
 import com.mm.http.cache.StrategyType
-import okhttp3.*
+import okhttp3.Call
+import okhttp3.MediaType
+import okhttp3.Protocol
+import okhttp3.Request
+import okhttp3.ResponseBody
 import okhttp3.internal.EMPTY_RESPONSE
-import okio.*
+import okio.Buffer
+import okio.BufferedSource
+import okio.ForwardingSource
+import okio.Timeout
+import okio.buffer
+import okio.use
 import retrofit2.Callback
 import retrofit2.Response
 import java.io.IOException
 import java.net.HttpURLConnection
-import java.util.*
-import javax.annotation.concurrent.GuardedBy
+import java.util.Objects
 
 /**
  * Created by : majian
@@ -21,10 +30,16 @@ import javax.annotation.concurrent.GuardedBy
 class HttpCacheCall<T> internal constructor(
     private val requestFactory: RequestFactory,
     @field:GuardedBy("this") private val rawCall: Call,
-    private val responseConverter: Converter<ResponseBody, T>,
-    private val cacheConverter: CacheConverter<T>,
-    private val cacheHelper: CacheHelper
+    responseBodyConverter: Converter<ResponseBody, T>,
+    cacheConverter: CacheConverter<T>,
+    responseConverter: ResponseConverter<T>?,
+    cacheHelper: CacheHelper?
 ) : retrofit2.Call<T> {
+
+    private val responseBodyConverter: Converter<ResponseBody, T>
+    private val cacheConverter: CacheConverter<T>
+    private val responseConverter: ResponseConverter<T>?
+    private val cacheHelper: CacheHelper?
 
     @Volatile
     private var canceled = false
@@ -34,6 +49,13 @@ class HttpCacheCall<T> internal constructor(
 
     @GuardedBy("this")
     private var executed = false
+
+    init {
+        this.responseBodyConverter = responseBodyConverter
+        this.cacheConverter = cacheConverter
+        this.responseConverter = responseConverter
+        this.cacheHelper = cacheHelper
+    }
 
     @Throws(IOException::class)
     override fun execute(): Response<T> {
@@ -73,12 +95,11 @@ class HttpCacheCall<T> internal constructor(
         val ignoreKey = cacheRequest.ignoreKey
         //添加忽略
         CacheHelper.ignoreKey(ignoreKey)
-
-        val compute = CacheStrategyCompute.Factory(
+        val compute: CacheStrategyCompute = CacheStrategyCompute.Factory(
             System.currentTimeMillis(),
             duration,
             timeUnit,
-            cacheHelper.get(call.request()),
+            cacheHelper?.get(call.request()),
             cacheHelper
         ).compute()
 
@@ -90,6 +111,7 @@ class HttpCacheCall<T> internal constructor(
             } else {
                 responseRemote(strategy, callback)
             }
+
             StrategyType.IF_NETWORK_ELSE_CACHE -> getRawCall().enqueue(object : okhttp3.Callback {
                 override fun onResponse(call: Call, response: okhttp3.Response) {
                     try {
@@ -97,7 +119,7 @@ class HttpCacheCall<T> internal constructor(
                         if (res.isSuccessful) {
                             callback.onResponse(this@HttpCacheCall, res)
                             cacheConverter.convert(res)?.let {
-                                cacheHelper.put(response, it)
+                                cacheHelper?.put(response, it)
                             }
                         } else {
                             responseCache(cacheResponse, callback)
@@ -115,10 +137,14 @@ class HttpCacheCall<T> internal constructor(
                     }
                 }
             })
+
             StrategyType.CACHE_AND_NETWORK -> {
-                cacheResponse?.let { responseCache(it, callback) }
+                if (cacheResponse != null) {
+                    responseCache(cacheResponse, callback)
+                }
                 responseRemote(strategy, callback)
             }
+
             else -> responseRemote(strategy, callback)
         }
     }
@@ -131,7 +157,7 @@ class HttpCacheCall<T> internal constructor(
                     callback?.onResponse(this@HttpCacheCall, res)
                     if (res.isSuccessful && cacheStrategy != StrategyType.NO_CACHE) {
                         cacheConverter.convert(res)?.let {
-                            cacheHelper.put(response, it)
+                            cacheHelper?.put(response, it)
                         }
                     }
                 } catch (e: Throwable) {
@@ -181,9 +207,7 @@ class HttpCacheCall<T> internal constructor(
                 .message("Unsatisfiable Request (only-if-cached)")
                 .body(EMPTY_RESPONSE).build()
             val responseBody = rawResponse.body
-            val noContentResponseBody = NoContentResponseBody(
-                responseBody?.contentType(), responseBody?.contentLength() ?: -1
-            )
+            val noContentResponseBody = NoContentResponseBody(responseBody?.contentType(), responseBody?.contentLength() ?: -1)
             return Response.error(HttpURLConnection.HTTP_GATEWAY_TIMEOUT, noContentResponseBody)
         }
         val rawBody = rawResponse.body
@@ -206,8 +230,9 @@ class HttpCacheCall<T> internal constructor(
         }
         val catchingBody = ExceptionCatchingResponseBody(rawBody!!)
         return try {
-            val body = responseConverter.convert(catchingBody)
-            Response.success(body, rawResponse)
+            val body = responseBodyConverter.convert(catchingBody)
+            val success = Response.success(body, rawResponse)
+            responseConverter?.convert(success) ?: success
         } catch (e: RuntimeException) {
             // If the underlying source threw an exception, propagate that rather than indicating it was
             // a runtime exception.
@@ -233,13 +258,7 @@ class HttpCacheCall<T> internal constructor(
     }
 
     override fun clone(): retrofit2.Call<T> {
-        return HttpCacheCall(
-            requestFactory,
-            rawCall,
-            responseConverter,
-            cacheConverter,
-            cacheHelper
-        )
+        return HttpCacheCall(requestFactory, rawCall, responseBodyConverter, cacheConverter, responseConverter, cacheHelper)
     }
 
     override fun request(): Request {
@@ -254,10 +273,7 @@ class HttpCacheCall<T> internal constructor(
         }
     }
 
-    internal class NoContentResponseBody(
-        private val contentType: MediaType?,
-        private val contentLength: Long
-    ) : ResponseBody() {
+    internal class NoContentResponseBody(private val contentType: MediaType?, private val contentLength: Long) : ResponseBody() {
         override fun contentType(): MediaType? {
             return contentType
         }
@@ -271,9 +287,26 @@ class HttpCacheCall<T> internal constructor(
         }
     }
 
-    internal class ExceptionCatchingResponseBody(private val delegate: ResponseBody) : ResponseBody() {
+    internal class ExceptionCatchingResponseBody(delegate: ResponseBody) : ResponseBody() {
+        private val delegate: ResponseBody
         private val delegateSource: BufferedSource
         var thrownException: IOException? = null
+
+        init {
+            this.delegate = delegate
+            delegateSource = object : ForwardingSource(delegate.source()) {
+                @Throws(IOException::class)
+                override fun read(sink: Buffer, byteCount: Long): Long {
+                    return try {
+                        super.read(sink, byteCount)
+                    } catch (e: IOException) {
+                        thrownException = e
+                        throw e
+                    }
+                }
+            }.buffer()
+        }
+
         override fun contentType(): MediaType? {
             return delegate.contentType()
         }
@@ -295,20 +328,6 @@ class HttpCacheCall<T> internal constructor(
             thrownException?.let {
                 throw it
             }
-        }
-
-        init {
-            delegateSource = object : ForwardingSource(delegate.source()) {
-                @Throws(IOException::class)
-                override fun read(sink: Buffer, byteCount: Long): Long {
-                    return try {
-                        super.read(sink, byteCount)
-                    } catch (e: IOException) {
-                        thrownException = e
-                        throw e
-                    }
-                }
-            }.buffer()
         }
     }
 }

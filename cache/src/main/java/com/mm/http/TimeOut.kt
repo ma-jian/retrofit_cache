@@ -7,7 +7,7 @@ import java.util.concurrent.TimeUnit
  * Date : 2021/9/24
  * 接口超时设置
  */
-@kotlin.annotation.Retention(AnnotationRetention.RUNTIME)
+@Retention(AnnotationRetention.RUNTIME)
 @Target(
     AnnotationTarget.FUNCTION,
     AnnotationTarget.PROPERTY_GETTER,

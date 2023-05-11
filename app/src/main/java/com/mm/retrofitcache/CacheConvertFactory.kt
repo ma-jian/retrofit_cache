@@ -8,7 +8,7 @@ import retrofit2.Response
 /**
  * Created by : majian
  * Date : 2021/9/30
- * 自定义存储规则，决定是否存储当前请求
+ * 自定义存储规则，决定是否存储当前请求,返回null 不存储
  */
 
 class CacheConvertFactory : CacheConverter.Factory() {
@@ -17,7 +17,7 @@ class CacheConvertFactory : CacheConverter.Factory() {
         return object : CacheConverter<T> {
             override fun convert(response: Response<T>): Response<T>? {
                 val body = response.body()
-                Log.e("CacheConvertFactory ：", body.toString())
+                Log.e("CacheConvertFactory", body.toString())
                 return response
             }
 

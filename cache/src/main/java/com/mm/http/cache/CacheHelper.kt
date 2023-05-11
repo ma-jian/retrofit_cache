@@ -34,19 +34,23 @@ import java.util.*
  */
 
 class CacheHelper internal constructor(
-        private val directory: File,
-        private val maxSize: Long,
-        private val fileSystem: FileSystem
+    private val directory: File,
+    private val maxSize: Long,
+    private val fileSystem: FileSystem
 ) : Closeable, Flushable {
     internal val cache = DiskLruCacheHelper(
-            fileSystem = fileSystem,
-            directory = directory,
-            appVersion = VERSION,
-            valueCount = ENTRY_COUNT,
-            maxSize = maxSize,
-            taskRunner = TaskRunner.INSTANCE
+        fileSystem = fileSystem,
+        directory = directory,
+        appVersion = VERSION,
+        valueCount = ENTRY_COUNT,
+        maxSize = maxSize,
+        taskRunner = TaskRunner.INSTANCE
     )
 
+    /**
+     * @param directory 缓存路径
+     * @param maxSize 最大字节数
+     */
     constructor(directory: File, maxSize: Long) : this(directory, maxSize, FileSystem.SYSTEM)
 
     fun get(request: Request): Response? {
@@ -180,7 +184,7 @@ class CacheHelper internal constructor(
                         TlsVersion.SSL_3_0
                     }
                     handshake =
-                            Handshake.get(tlsVersion, cipherSuite, peerCertificates, localCertificates)
+                        Handshake.get(tlsVersion, cipherSuite, peerCertificates, localCertificates)
                 } else {
                     handshake = null
                 }
@@ -228,28 +232,28 @@ class CacheHelper internal constructor(
                 sink.writeDecimalLong(varyHeaders.size.toLong()).writeByte('\n'.toInt())
                 for (i in 0 until varyHeaders.size) {
                     sink.writeUtf8(varyHeaders.name(i))
-                            .writeUtf8(": ")
-                            .writeUtf8(varyHeaders.value(i))
-                            .writeByte('\n'.toInt())
+                        .writeUtf8(": ")
+                        .writeUtf8(varyHeaders.value(i))
+                        .writeByte('\n'.toInt())
                 }
 
                 sink.writeUtf8(StatusLine(protocol, code, message).toString())
-                        .writeByte('\n'.toInt())
+                    .writeByte('\n'.toInt())
                 sink.writeDecimalLong((responseHeaders.size + 2).toLong()).writeByte('\n'.toInt())
                 for (i in 0 until responseHeaders.size) {
                     sink.writeUtf8(responseHeaders.name(i))
-                            .writeUtf8(": ")
-                            .writeUtf8(responseHeaders.value(i))
-                            .writeByte('\n'.toInt())
+                        .writeUtf8(": ")
+                        .writeUtf8(responseHeaders.value(i))
+                        .writeByte('\n'.toInt())
                 }
                 sink.writeUtf8(SENT_MILLIS)
-                        .writeUtf8(": ")
-                        .writeDecimalLong(sentRequestMillis)
-                        .writeByte('\n'.toInt())
+                    .writeUtf8(": ")
+                    .writeDecimalLong(sentRequestMillis)
+                    .writeByte('\n'.toInt())
                 sink.writeUtf8(RECEIVED_MILLIS)
-                        .writeUtf8(": ")
-                        .writeDecimalLong(receivedResponseMillis)
-                        .writeByte('\n'.toInt())
+                    .writeUtf8(": ")
+                    .writeDecimalLong(receivedResponseMillis)
+                    .writeByte('\n'.toInt())
 
                 if (isHttps) {
                     sink.writeByte('\n'.toInt())
@@ -297,30 +301,30 @@ class CacheHelper internal constructor(
 
         fun matches(request: Request, response: Response): Boolean {
             return url == request.url.toString() &&
-                   requestMethod == request.method &&
-                   varyMatches(response, varyHeaders, request)
+                    requestMethod == request.method &&
+                    varyMatches(response, varyHeaders, request)
         }
 
         fun response(snapshot: DiskLruCacheHelper.Snapshot): Response {
             val contentType = responseHeaders["Content-Type"]
             val contentLength = responseHeaders["Content-Length"]
             val cacheRequest = Request.Builder()
-                    .url(url)
-                    .method(requestMethod, body)
-                    .headers(varyHeaders)
-                    .build()
+                .url(url)
+                .method(requestMethod, body)
+                .headers(varyHeaders)
+                .build()
             val responseHeaders = responseHeaders.newBuilder().add(CACHE_HEADER, "local_cache").build()
             return Response.Builder()
-                    .request(cacheRequest)
-                    .protocol(protocol)
-                    .code(code)
-                    .message(message)
-                    .headers(responseHeaders)
-                    .body(CacheResponseBody(snapshot, contentType, contentLength))
-                    .handshake(handshake)
-                    .sentRequestAtMillis(sentRequestMillis)
-                    .receivedResponseAtMillis(receivedResponseMillis)
-                    .build()
+                .request(cacheRequest)
+                .protocol(protocol)
+                .code(code)
+                .message(message)
+                .headers(responseHeaders)
+                .body(CacheResponseBody(snapshot, contentType, contentLength))
+                .handshake(handshake)
+                .sentRequestAtMillis(sentRequestMillis)
+                .receivedResponseAtMillis(receivedResponseMillis)
+                .build()
         }
 
         companion object {
@@ -333,9 +337,9 @@ class CacheHelper internal constructor(
     }
 
     private class CacheResponseBody(
-            val snapshot: DiskLruCacheHelper.Snapshot,
-            private val contentType: String?,
-            private val contentLength: String?
+        val snapshot: DiskLruCacheHelper.Snapshot,
+        private val contentType: String?,
+        private val contentLength: String?
     ) : ResponseBody() {
         private val bodySource: BufferedSource
 
@@ -358,7 +362,7 @@ class CacheHelper internal constructor(
     }
 
     private inner class RealCacheRequest(
-            private val editor: DiskLruCacheHelper.Editor
+        private val editor: DiskLruCacheHelper.Editor
     ) : CacheRequest {
         private val cacheOut: Sink = editor.newSink(ENTRY_BODY)
         private val body: Sink
@@ -538,9 +542,9 @@ class CacheHelper internal constructor(
          * [newRequest].
          */
         fun varyMatches(
-                cachedResponse: Response,
-                cachedRequest: Headers,
-                newRequest: Request
+            cachedResponse: Response,
+            cachedRequest: Headers,
+            newRequest: Request
         ): Boolean {
             return newRequest.headers.varyFields().none {
                 cachedResponse.headers.values(it) != newRequest.headers(it)

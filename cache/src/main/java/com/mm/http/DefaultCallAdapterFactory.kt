@@ -65,9 +65,8 @@ class DefaultCallAdapterFactory internal constructor(private val callbackExecuto
                                 return method.invoke(proxy, *args)
                             }
                         })
-                        val factory = retrofit.retrofit.callAdapterFactories()[0]
                         //todo 未完成
-                        throw IllegalArgumentException("不支持该类型")
+                        throw IllegalArgumentException("暂不支持该类型的返回数据")
                     } else {
                         val invoke = method.invoke(ser, *args)
                         val call = invoke as Call<*>
@@ -95,7 +94,7 @@ class DefaultCallAdapterFactory internal constructor(private val callbackExecuto
         val connectTimeoutMillis = client.connectTimeoutMillis
         val readTimeoutMillis = client.readTimeoutMillis
         val writeTimeoutMillis = client.writeTimeoutMillis
-        val chain = RealRequestInterceptorChain(client.newCall(request), retrofit.cache, interceptors, 0, request, connectTimeoutMillis, readTimeoutMillis, writeTimeoutMillis)
+        val chain = RealRequestInterceptorChain(client.newCall(request), retrofit.cacheHelper, interceptors, 0, request, connectTimeoutMillis, readTimeoutMillis, writeTimeoutMillis)
         return chain.proceed(request).request
     }
 
