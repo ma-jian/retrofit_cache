@@ -64,3 +64,5 @@ vcs.xml
 
 # lint
 lint/
+
+gradle.properties

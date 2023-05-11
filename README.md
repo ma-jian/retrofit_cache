@@ -2,7 +2,12 @@
 
 **一个注解实现对Retrofit框架的网络数据缓存**
 
+```
+implementation("io.github.ma-jian:retrofit_cache:1.1")
+```
+
 支持多种缓存逻辑
+
 - NO_CACHE = -1 //不缓存
 - FORCE_NETWORK = 1 // 仅网络
 - FORCE_CACHE = 2 // 仅缓存
@@ -12,7 +17,9 @@
 - CACHE_AND_NETWORK_DIFF = 6 // 暂未实现该策略
 
 ### **CHANGELOG**
+
 #### v1.1
+
 1. 新增注解[HOST](cache/src/main/java/com/mm/http/HOST.kt) 支持多baseUrl设置，可自定义动态切换
 2. 新增支持自定义解析数据，方便对Response数据进行统一处理
 3. 新增注解[IgnoreInterceptor](cache/src/main/java/com/mm/http/IgnoreInterceptor.kt) 可用于忽略拦截器进入缓存预处理逻辑

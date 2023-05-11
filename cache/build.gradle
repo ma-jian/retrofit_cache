@@ -39,3 +39,5 @@ dependencies {
     compileOnly 'androidx.annotation:annotation:1.6.0'
     testImplementation 'junit:junit:4.+'
 }
+
+apply plugin: "com.vanniktech.maven.publish"

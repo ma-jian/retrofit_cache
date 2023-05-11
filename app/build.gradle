@@ -35,7 +35,8 @@ android {
 }
 
 dependencies {
-    implementation project(":cache")
+    implementation("io.github.ma-jian:retrofit_cache:1.1")
+//    implementation project(":cache")
     implementation 'androidx.core:core-ktx:1.10.0'
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
