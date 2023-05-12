@@ -1,6 +1,7 @@
 package com.mm.http
 
 import android.util.Log
+import okhttp3.Interceptor
 import okhttp3.Request
 import okio.Timeout
 import retrofit2.*
@@ -90,7 +91,7 @@ class DefaultCallAdapterFactory internal constructor(private val callbackExecuto
     @Throws(IOException::class)
     private fun getRawCallWithInterceptorChain(retrofit: RetrofitCache, request: Request): Request {
         val client = retrofit.callFactory()
-        val interceptors = client.interceptors
+        val interceptors = retrofit.cacheInterceptors
         val connectTimeoutMillis = client.connectTimeoutMillis
         val readTimeoutMillis = client.readTimeoutMillis
         val writeTimeoutMillis = client.writeTimeoutMillis

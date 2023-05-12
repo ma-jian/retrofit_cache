@@ -16,8 +16,7 @@ import retrofit2.http.Path
 @HOST("https://api.github.com/", hostType = 1)
 interface MyService {
 
-    @IgnoreCache
-    @CacheStrategy(value = StrategyType.CACHE_AND_NETWORK)
+    @CacheStrategy(value = StrategyType.NO_CACHE)
     @GET("users/{user}")
     fun getUser(@Path("user") user: String): Call<Any>
 }

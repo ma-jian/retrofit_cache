@@ -14,7 +14,7 @@ import java.util.logging.Logger
 /**
  * Created by : majian
  */
-@IgnoreInterceptor
+@IgnoreInterceptor(cacheHandle = true)
 class LogInterceptor : Interceptor {
     @Throws(IOException::class)
     override fun intercept(chain: Interceptor.Chain): Response {

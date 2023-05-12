@@ -1,7 +1,6 @@
 package com.mm.http
 
 import com.mm.http.cache.CacheConverter
-import com.mm.http.cache.CacheHelper
 import okhttp3.Response
 import okhttp3.ResponseBody
 import retrofit2.Call
@@ -19,20 +18,20 @@ internal abstract class HttpServiceMethod<ResponseT, ReturnT>(
     responseBodyConverter: Converter<ResponseBody, ResponseT>,
     cacheConverter: CacheConverter<ResponseT>,
     responseConverter: ResponseConverter<ResponseT>,
-    cache: CacheHelper?
+    retrofit: RetrofitCache
 ) : ServiceMethod<ReturnT>() {
     private val callAdapter: CacheCallAdapter<ResponseT, ReturnT>
     private val responseBodyConverter: Converter<ResponseBody, ResponseT>
     private val cacheConverter: CacheConverter<ResponseT>
     private val responseConverter: ResponseConverter<ResponseT>
-    private val cache: CacheHelper?
+    private val retrofit: RetrofitCache
 
     init {
         this.responseBodyConverter = responseBodyConverter
         this.cacheConverter = cacheConverter
         this.responseConverter = responseConverter
         this.callAdapter = callAdapter
-        this.cache = cache
+        this.retrofit = retrofit
     }
 
     override fun invoke(args: Array<Any>): ReturnT {
@@ -41,7 +40,7 @@ internal abstract class HttpServiceMethod<ResponseT, ReturnT>(
         val isKotlinSuspendFunction = requestFactory.isKotlinSuspendFunction
         val rawCall = callAdapter.rawCall(service, method, args, isKotlinSuspendFunction)
         val call: Call<ResponseT> =
-            HttpCacheCall(requestFactory, rawCall, responseBodyConverter, cacheConverter, responseConverter, cache)
+            HttpCacheCall(requestFactory, rawCall, responseBodyConverter, cacheConverter, responseConverter, retrofit)
         return adapt(call, args)
     }
 
@@ -53,10 +52,10 @@ internal abstract class HttpServiceMethod<ResponseT, ReturnT>(
         cacheConverter: CacheConverter<ResponseT>,
         responseConverter: ResponseConverter<ResponseT>,
         private val callAdapter: CacheCallAdapter<ResponseT, ReturnT>,
-        cache: CacheHelper?
+        retrofit: RetrofitCache
     ) : HttpServiceMethod<ResponseT, ReturnT>(
         requestFactory, callAdapter, responseBodyConverter,
-        cacheConverter, responseConverter, cache
+        cacheConverter, responseConverter, retrofit
     ) {
         override fun adapt(call: Call<ResponseT>?, args: Array<Any>?): ReturnT {
             return callAdapter.adapt(call!!)
@@ -101,7 +100,7 @@ internal abstract class HttpServiceMethod<ResponseT, ReturnT>(
             val cacheConverter: CacheConverter<ResponseT> = createCacheConverter(retrofit, method, responseType)
             val responseConverter: ResponseConverter<ResponseT> =
                 createResponseConverter<ResponseT>(retrofit, method, responseType)
-            return CallAdapted(requestFactory, responseBodyConverter, cacheConverter, responseConverter, callAdapter, retrofit.cacheHelper)
+            return CallAdapted(requestFactory, responseBodyConverter, cacheConverter, responseConverter, callAdapter, retrofit)
         }
 
         private fun <ResponseT> createCacheConverter(

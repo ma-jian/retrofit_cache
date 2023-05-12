@@ -7,4 +7,7 @@ package com.mm.http
  */
 @Target(AnnotationTarget.ANNOTATION_CLASS, AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.RUNTIME)
-annotation class IgnoreInterceptor
+annotation class IgnoreInterceptor(
+    //当前拦截器是否参与缓存数据返回时的处理
+    val cacheHandle: Boolean = false
+)

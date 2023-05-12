@@ -46,6 +46,30 @@ class RetrofitCache internal constructor(
 ) {
     private val serviceMethodCache: MutableMap<Method, ServiceMethod<*>> = ConcurrentHashMap()
 
+    //用于处理缓存逻辑拦截器预加载
+    internal val cacheInterceptors: MutableList<Interceptor> = mutableListOf()
+
+    //处理返回缓存数据时的拦截器(一般用于打印缓存数据日志)
+    internal val cacheResponseInterceptors: MutableList<Interceptor> = mutableListOf()
+
+    init {
+        //预处理拦截器逻辑
+        val client = callFactory()
+        cacheInterceptors.addAll(client.interceptors)
+        val iterator = cacheInterceptors.iterator()
+        //忽略掉不需要预处理的拦截器
+        while (iterator.hasNext()) {
+            val interceptor = iterator.next()
+            if (interceptor.javaClass.isAnnotationPresent(IgnoreInterceptor::class.java)) {
+                val cacheHandle = interceptor.javaClass.getAnnotation(IgnoreInterceptor::class.java)?.cacheHandle
+                if (cacheHandle == true) {
+                    cacheResponseInterceptors.add(interceptor)
+                }
+                iterator.remove()
+            }
+        }
+    }
+
     // Single-interface proxy creation guarded by parameter safety.
     fun <T> create(service: Class<T>): T {
         //缓存位置为空时直接跳过缓存处理逻辑
@@ -124,9 +148,7 @@ class RetrofitCache internal constructor(
      * @throws IllegalArgumentException if no call adapter available for `type`.
      */
     private fun nextCallAdapter(
-        skipPast: CacheCallAdapter.Factory?,
-        returnType: Type,
-        annotations: Array<Annotation>
+        skipPast: CacheCallAdapter.Factory?, returnType: Type, annotations: Array<Annotation>
     ): CacheCallAdapter<*, *> {
         Objects.requireNonNull(returnType, "returnType == null")
         Objects.requireNonNull(annotations, "annotations == null")

@@ -33,13 +33,14 @@ class HttpCacheCall<T> internal constructor(
     responseBodyConverter: Converter<ResponseBody, T>,
     cacheConverter: CacheConverter<T>,
     responseConverter: ResponseConverter<T>?,
-    cacheHelper: CacheHelper?
+    retrofitCache: RetrofitCache
 ) : retrofit2.Call<T> {
 
     private val responseBodyConverter: Converter<ResponseBody, T>
     private val cacheConverter: CacheConverter<T>
     private val responseConverter: ResponseConverter<T>?
     private val cacheHelper: CacheHelper?
+    private val retrofit: RetrofitCache
 
     @Volatile
     private var canceled = false
@@ -54,7 +55,8 @@ class HttpCacheCall<T> internal constructor(
         this.responseBodyConverter = responseBodyConverter
         this.cacheConverter = cacheConverter
         this.responseConverter = responseConverter
-        this.cacheHelper = cacheHelper
+        this.cacheHelper = retrofitCache.cacheHelper
+        this.retrofit = retrofitCache
     }
 
     @Throws(IOException::class)
@@ -177,11 +179,31 @@ class HttpCacheCall<T> internal constructor(
 
     private fun responseCache(cacheResponse: okhttp3.Response?, callback: Callback<T>?) {
         try {
-            val res = parseResponse(cacheResponse)
+            val response = cacheResponse?.let { handleInterceptorChain(cacheResponse.request) }
+            val res = parseResponse(response)
             callback?.onResponse(this@HttpCacheCall, res)
         } catch (e: Throwable) {
             callback?.onFailure(this@HttpCacheCall, e)
         }
+    }
+
+    /**
+     * getRawCall from interceptors
+     * @param request
+     * @return rawRequest
+     */
+    @Throws(IOException::class)
+    private fun handleInterceptorChain(request: Request): okhttp3.Response {
+        val interceptors = retrofit.cacheResponseInterceptors
+        val client = retrofit.callFactory()
+        val connectTimeoutMillis = client.connectTimeoutMillis
+        val readTimeoutMillis = client.readTimeoutMillis
+        val writeTimeoutMillis = client.writeTimeoutMillis
+        val chain = RealRequestInterceptorChain(
+            client.newCall(request), cacheHelper, interceptors,
+            0, request, connectTimeoutMillis, readTimeoutMillis, writeTimeoutMillis
+        )
+        return chain.proceed(request)
     }
 
     private fun getRawCall(): Call {
@@ -258,7 +280,7 @@ class HttpCacheCall<T> internal constructor(
     }
 
     override fun clone(): retrofit2.Call<T> {
-        return HttpCacheCall(requestFactory, rawCall, responseBodyConverter, cacheConverter, responseConverter, cacheHelper)
+        return HttpCacheCall(requestFactory, rawCall, responseBodyConverter, cacheConverter, responseConverter, retrofit)
     }
 
     override fun request(): Request {
