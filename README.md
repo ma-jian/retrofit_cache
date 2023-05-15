@@ -3,7 +3,7 @@
 **一个注解实现对Retrofit框架的网络数据缓存**
 
 ```
-implementation("io.github.ma-jian:retrofit_cache:1.1")
+implementation("io.github.ma-jian:retrofit_cache:1.1.1")
 ```
 
 支持多种缓存逻辑
@@ -14,9 +14,10 @@ implementation("io.github.ma-jian:retrofit_cache:1.1")
 - IF_CACHE_ELSE_NETWORK = 3 // 优先缓存
 - IF_NETWORK_ELSE_CACHE = 4 // 优先网络
 - CACHE_AND_NETWORK = 5 // 先缓存后网络
-- CACHE_AND_NETWORK_DIFF = 6 // 暂未实现该策略
 
 ### **CHANGELOG**
+#### v1.1.1
+1. 修复bug
 
 #### v1.1
 
