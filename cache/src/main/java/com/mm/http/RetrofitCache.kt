@@ -46,10 +46,12 @@ class RetrofitCache internal constructor(
 ) {
     private val serviceMethodCache: MutableMap<Method, ServiceMethod<*>> = ConcurrentHashMap()
 
-    //用于处理缓存逻辑拦截器预加载
+    private val hostRetrofitCache: MutableMap<HOST, Retrofit> = ConcurrentHashMap()
+
+    //缓存逻辑拦截器预加载
     internal val cacheInterceptors: MutableList<Interceptor> = mutableListOf()
 
-    //处理返回缓存数据时的拦截器(一般用于打印缓存数据日志)
+    //缓存数据返回时加载拦截器
     internal val cacheResponseInterceptors: MutableList<Interceptor> = mutableListOf()
 
     init {
@@ -66,6 +68,8 @@ class RetrofitCache internal constructor(
                     cacheResponseInterceptors.add(interceptor)
                 }
                 iterator.remove()
+            } else {
+                cacheResponseInterceptors.add(interceptor)
             }
         }
     }
@@ -134,6 +138,60 @@ class RetrofitCache internal constructor(
     }
 
     /**
+     * return converterFactories
+     */
+    fun converterFactories(): List<Converter.Factory?> {
+        return converterFactories
+    }
+
+    /**
+     * create retrofit default service
+     *
+     * @param clazz
+     * @return return service
+     */
+    fun <T> createService(clazz: Class<T>): T {
+        require(clazz.getAnnotation(HOST::class.java) != null) {
+            "请添加 @HOST.class"
+        }
+        require(!TextUtils.isEmpty(clazz.getAnnotation(HOST::class.java)?.value)) {
+            "请指定相应的host参数 HOST.class value"
+        }
+        val annotation = clazz.getAnnotation(HOST::class.java)
+        return loadHostRetrofit(annotation!!).create(clazz)
+    }
+
+    /**
+     * load retrofit from cache
+     */
+    private fun loadHostRetrofit(host: HOST): Retrofit {
+        var result: Retrofit? = hostRetrofitCache[host]
+        if (result != null) return result
+        synchronized(hostRetrofitCache) {
+            result = hostRetrofitCache[host]
+            if (result == null) {
+                val retrofit = if (hostInterceptor != null) {
+                    val hostUrl = hostInterceptor.hostUrl(host)
+                    retrofitBuilder.baseUrl(hostUrl).build()
+                } else {
+                    retrofitBuilder.baseUrl(host.value).build()
+                }
+                hostRetrofitCache[host] = retrofit
+                result = retrofit
+            }
+        }
+        return result!!
+    }
+
+    /**
+     * The factory used to create [OkHttp calls][okhttp3.Call] for sending a HTTP requests.
+     * Typically an instance of [OkHttpClient].
+     */
+    fun callFactory(): OkHttpClient {
+        return okHttpClient
+    }
+
+    /**
      * Returns the [CacheCallAdapter] for `returnType` from the available [ ][.callAdapterFactories].
      *
      * @throws IllegalArgumentException if no call adapter available for `type`.
@@ -175,41 +233,6 @@ class RetrofitCache internal constructor(
             i++
         }
         throw IllegalArgumentException(builder.toString())
-    }
-
-    fun converterFactories(): List<Converter.Factory?> {
-        return converterFactories
-    }
-
-    /**
-     * create retrofit default service
-     *
-     * @param clazz
-     * @return return service
-     */
-    fun <T> createService(clazz: Class<T>): T {
-        require(clazz.getAnnotation(HOST::class.java) != null) {
-            "请添加 @HOST.class"
-        }
-        require(!TextUtils.isEmpty(clazz.getAnnotation(HOST::class.java)?.value)) {
-            "请指定相应的host参数 HOST.class value"
-        }
-        val annotation = clazz.getAnnotation(HOST::class.java)
-        return if (hostInterceptor != null) {
-            val hostUrl = hostInterceptor.hostUrl(annotation!!)
-            retrofitBuilder.baseUrl(hostUrl).build().create(clazz)
-        } else {
-            val host = annotation!!.value
-            retrofitBuilder.baseUrl(host).build().create(clazz)
-        }
-    }
-
-    /**
-     * The factory used to create [OkHttp calls][okhttp3.Call] for sending a HTTP requests.
-     * Typically an instance of [OkHttpClient].
-     */
-    fun callFactory(): OkHttpClient {
-        return okHttpClient
     }
 
     /**
