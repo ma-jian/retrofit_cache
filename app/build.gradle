@@ -5,13 +5,13 @@ plugins {
 
 android {
     compileSdkVersion rootProject.compileSdkVersion
-
+    namespace 'com.mm.retrofitcache'
     defaultConfig {
         applicationId "com.mm.retrofitcache"
         minSdkVersion rootProject.minSdkVersion
         targetSdkVersion rootProject.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode 3
+        versionName "1.2"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -23,11 +23,11 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
     }
     kotlinOptions {
-        jvmTarget = '1.8'
+        jvmTarget = '11'
     }
     viewBinding {
         enabled = true
@@ -35,15 +35,15 @@ android {
 }
 
 dependencies {
-//    implementation("io.github.ma-jian:retrofit_cache:1.1")
-    implementation project(":cache")
+//    implementation project(':retrofit_cache')
+    implementation("io.github.ma-jian:retrofit-cache:1.2.0")
     implementation 'androidx.core:core-ktx:1.10.0'
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
-    implementation "com.squareup.retrofit2:retrofit:2.9.0"
-    implementation "com.squareup.okhttp3:okhttp:4.11.0"
-    implementation "com.google.code.gson:gson:2.10.1"
-    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.0"
+    implementation "com.squareup.retrofit2:retrofit:$rootProject.retrofitVersion"
+    implementation "com.squareup.okhttp3:okhttp:$rootProject.okhttpVersion"
+    implementation "com.google.code.gson:gson:$rootProject.gsonVersion"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:$rootProject.coroutinesVersion"
     implementation 'androidx.annotation:annotation:1.6.0'
     testImplementation 'junit:junit:4.+'
 }

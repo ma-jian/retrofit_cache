@@ -6,7 +6,7 @@ import com.mm.http.cache.CacheConverter
 import retrofit2.Response
 
 /**
- * Created by : majian
+ * 
  * Date : 2021/9/30
  * 自定义存储规则，决定是否存储当前请求,返回null 不存储
  */

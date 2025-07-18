@@ -12,15 +12,16 @@ import java.util.logging.Level
 import java.util.logging.Logger
 
 /**
- * Created by : majian
+ *
+ * @param enableCacheHandling 是否参与缓存处理
  */
-@IgnoreInterceptor(cacheHandle = true)
+@IgnoreInterceptor(enableCacheHandling = true)
 class LogInterceptor : Interceptor {
     @Throws(IOException::class)
     override fun intercept(chain: Interceptor.Chain): Response {
         val request: Request = chain.request()
         val response: Response = chain.proceed(request)
-        if (BuildConfig.BUILD_TYPE != "release" && response.code < 505) {
+        if (response.code < 505) {
             synchronized(this) {
                 log("↓↓↓ ---------------------------------------------------------------------------- ↓↓↓")
                 log("--> " + request.method + " " + response.code + " " + request.url)

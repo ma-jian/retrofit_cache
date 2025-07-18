@@ -10,51 +10,71 @@
         android:id="@+id/input"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:text="HelloWorld"
         android:layout_margin="20dp"
+        android:text="HelloWorld"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
     <Button
         android:id="@+id/button"
+        android:layout_width="wrap_content"
+        android:layout_height="40dp"
+        android:layout_margin="20dp"
         android:background="@color/teal_200"
         android:text="get"
-        android:layout_margin="20dp"
         app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/input"
+        app:layout_constraintTop_toBottomOf="@id/input" />
+
+    <Button
+        android:id="@+id/button2"
         android:layout_width="wrap_content"
-        android:layout_height="40dp"/>
+        android:layout_height="40dp"
+        android:background="@color/teal_200"
+        android:text="get2"
+        app:layout_constraintBottom_toBottomOf="@+id/button"
+        app:layout_constraintEnd_toStartOf="@+id/flow"
+        app:layout_constraintStart_toEndOf="@+id/button"
+        app:layout_constraintTop_toTopOf="@+id/button" />
 
     <Button
         android:id="@+id/flow"
+        android:layout_width="wrap_content"
+        android:layout_height="40dp"
         android:background="@color/teal_200"
         android:text="flow"
-        android:layout_margin="20dp"
-        app:layout_constraintLeft_toRightOf="@id/button"
-        app:layout_constraintTop_toBottomOf="@id/input"
-        android:layout_width="wrap_content"
-        android:layout_height="40dp"/>
+        app:layout_constraintBottom_toBottomOf="@+id/button2"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@id/button2"
+        app:layout_constraintTop_toTopOf="@+id/button2" />
 
-    <ScrollView
-        android:layout_marginTop="10dp"
-        app:layout_constraintBottom_toBottomOf="parent"
+    <TextView
+        android:id="@+id/time"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="5dp"
+        android:paddingStart="15dp"
+        tools:text="2025-01-02"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toBottomOf="@id/button"
+        android:textColor="@color/purple_500" />
+
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="0dp">
+        android:layout_height="0dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/time">
 
         <TextView
             android:id="@+id/text"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textColor="@color/purple_500"
             android:padding="15dp"
-          />
+            android:textColor="@color/purple_500" />
     </ScrollView>
-
-
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>

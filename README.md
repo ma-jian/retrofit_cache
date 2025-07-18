@@ -3,7 +3,7 @@
 **一个注解实现对Retrofit框架的网络数据缓存**
 
 ```
-implementation("io.github.ma-jian:retrofit_cache:1.1.1")
+implementation("io.github.ma-jian-retrofit-cache-1.2.0")
 ```
 
 支持多种缓存逻辑
@@ -16,6 +16,13 @@ implementation("io.github.ma-jian:retrofit_cache:1.1.1")
 - CACHE_AND_NETWORK = 5 // 先缓存后网络
 
 ### **CHANGELOG**
+
+#### v1.2.0
+1. 新增对suspend函数的支持
+2. 完全兼容retrofit原生支持的返回值类型
+3. 最高支持retrofit：2.10.0 okhttp：4.12.0
+4. 修复bug
+
 #### v1.1.1
 1. 修复bug
 
@@ -29,37 +36,23 @@ implementation("io.github.ma-jian:retrofit_cache:1.1.1")
 6. HTTP网络扩展新增支持返回Result<T>结果
 7. 移除cache路径必须设置的限制; 缓存路径为null时直接返回原始Retrofit逻辑
 
+#### 使用示例
 ```kotlin
-private fun createCache(): RetrofitCache {
-    val cacheHelper = CacheHelper(cacheDir, Long.MAX_VALUE)
-    return RetrofitCache.Builder().cache(cacheHelper)
-        .addCacheConverterFactory(CacheConvertFactory())
-        .addResponseConverterFactory(object : ResponseConverter.Factory() {
-            override fun converterResponse(retrofit: RetrofitCache): ResponseConverter<Any>? {
-                //自定义修改结果并返回Response
-                return super.converterResponse(retrofit)
-            }
-        })
-        .addHostInterceptor(object : DynamicHostInterceptor {
-            override fun hostUrl(host: HOST): HttpUrl {
-                return when (host.hostType) {
-                    1 -> "https://api.github.com/".toHttpUrl()
-                    else -> super.hostUrl(host)
-                }
-            }
-        })
-        .addInterceptor(LogInterceptor())
-        .build()
-}
+// CACHE_AND_NETWORK 策略下不支持使用suspend函数
+@CacheStrategy(value = StrategyType.CACHE_AND_NETWORK)
+@GET("users/{user}")
+fun getUser(@Path("user") user: String): Call<Any>
+
+@CacheStrategy(value = StrategyType.NO_CACHE)
+@GET("users/{user}")
+suspend fun getUser2(@Path("user") user: String): Any
+
+@GET("users/{user}")
+suspend fun getUser3(@Path("user") user: String): Response<Any>
 ```
 
 ```kotlin
-service.getUser(binding.input.text.toString()).asResultFlow().collect {
-    it.onSuccess { value ->
-        binding.text.text = value.toString()
-    }
-    it.onFailure { error ->
-        binding.text.text = error.toString()
-    }
+service.getUser(binding.input.text.toString()).asCallFlow().collect {
+    Log.e("user", it.toString())
 }
 ```

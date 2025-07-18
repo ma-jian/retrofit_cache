@@ -1,0 +1,44 @@
+plugins {
+    id 'com.android.library'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    compileSdkVersion rootProject.compileSdkVersion
+    namespace 'com.mm.http'
+    defaultConfig {
+        minSdkVersion rootProject.minSdkVersion
+        targetSdkVersion rootProject.targetSdkVersion
+        versionCode 3
+        versionName "1.2.0"
+
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+        consumerProguardFiles "consumer-rules.pro"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+    kotlinOptions {
+        jvmTarget = '11'
+    }
+}
+
+dependencies {
+    compileOnly "com.squareup.retrofit2:retrofit:$rootProject.retrofitVersion"
+    compileOnly "com.squareup.okhttp3:okhttp:$rootProject.okhttpVersion"
+    compileOnly "com.google.code.gson:gson:$rootProject.gsonVersion"
+    compileOnly "org.jetbrains.kotlinx:kotlinx-coroutines-core:$rootProject.coroutinesVersion"
+    compileOnly 'androidx.annotation:annotation:1.6.0'
+//    compileOnly "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+    testImplementation 'junit:junit:4.+'
+}
+
+apply plugin: "com.vanniktech.maven.publish"
