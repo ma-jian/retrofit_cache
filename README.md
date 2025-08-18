@@ -3,7 +3,7 @@
 **一个注解实现对Retrofit框架的网络数据缓存**
 
 ```
-implementation("io.github.ma-jian-retrofit-cache-1.2.0")
+implementation 'io.github.ma-jian:retrofit-cache:1.2.0'
 ```
 
 支持多种缓存逻辑
