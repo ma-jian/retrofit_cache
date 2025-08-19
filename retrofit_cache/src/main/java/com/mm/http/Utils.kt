@@ -1,7 +1,9 @@
 package com.mm.http
 
+import okhttp3.Headers.Companion.headersOf
 import okhttp3.ResponseBody
 import okhttp3.ResponseBody.Companion.asResponseBody
+import okhttp3.ResponseBody.Companion.toResponseBody
 import okio.Buffer
 import java.lang.reflect.GenericArrayType
 import java.lang.reflect.Method
@@ -13,7 +15,7 @@ import java.util.Objects
 
 fun ParameterizedType.getParameterUpperBound(index: Int): Type {
     val types = actualTypeArguments
-    require(!(index < 0 || index >= types.size)) { "Index " + index + " not in range [0," + types.size + ") for " + this}
+    require(!(index < 0 || index >= types.size)) { "Index " + index + " not in range [0," + types.size + ") for " + this }
     val paramType = types[index]
     return if (paramType is WildcardType) {
         paramType.upperBounds[0]
@@ -54,7 +56,7 @@ fun Type.getRawType(): Class<*> {
     )
 }
 
-fun Array<Annotation>.isAnnotationPresent(cls: Class<out Annotation?>) : Boolean {
+fun Array<Annotation>.isAnnotationPresent(cls: Class<out Annotation?>): Boolean {
     for (annotation in this) {
         if (cls.isInstance(annotation)) {
             return true
@@ -63,7 +65,7 @@ fun Array<Annotation>.isAnnotationPresent(cls: Class<out Annotation?>) : Boolean
     return false
 }
 
-fun ResponseBody?.toBuffer(): ResponseBody{
+fun ResponseBody?.toBuffer(): ResponseBody {
     val buffer = Buffer()
     this?.source()?.readAll(buffer)
     return buffer.asResponseBody(this?.contentType(), this?.contentLength() ?: -1)
@@ -71,12 +73,24 @@ fun ResponseBody?.toBuffer(): ResponseBody{
 
 fun Method?.methodError(cause: Throwable?, message: String, vararg args: Any?): RuntimeException {
     return IllegalArgumentException(
-        "${String.format(message, *args)} for method ${this?.declaringClass?.simpleName}.${this?.name}", cause
+        "${
+            String.format(
+                message,
+                *args
+            )
+        } for method ${this?.declaringClass?.simpleName}.${this?.name}", cause
     )
 }
 
 fun Method?.methodError(message: String?, vararg args: Any?): RuntimeException {
-    return IllegalArgumentException("${String.format(message!!, *args)} for method ${this?.declaringClass?.simpleName}.${this?.name}")
+    return IllegalArgumentException(
+        "${
+            String.format(
+                message!!,
+                *args
+            )
+        } for method ${this?.declaringClass?.simpleName}.${this?.name}"
+    )
 }
 
 fun ParameterizedType.getParameterLowerBound(index: Int): Type {
@@ -91,9 +105,11 @@ fun Throwable?.throwIfFatal() {
         is VirtualMachineError -> {
             throw this
         }
+
         is ThreadDeath -> {
             throw this
         }
+
         is LinkageError -> {
             throw this
         }
@@ -150,3 +166,12 @@ internal class ParameterizedTypeImpl(
         this.typeArguments = typeArguments.clone() as Array<Type>
     }
 }
+
+@JvmField
+val EMPTY_BYTE_ARRAY = ByteArray(0)
+
+@JvmField
+val EMPTY_HEADERS = headersOf()
+
+@JvmField
+val EMPTY_RESPONSE = EMPTY_BYTE_ARRAY.toResponseBody()

@@ -4,23 +4,31 @@ import okhttp3.OkHttpClient
 import okhttp3.internal.closeQuietly
 import okhttp3.internal.concurrent.Task
 import okhttp3.internal.concurrent.TaskRunner
-import okhttp3.internal.io.FileSystem
-import okhttp3.internal.isCivilized
 import okhttp3.internal.platform.Platform
-import okio.*
+import okio.BufferedSink
 import okio.Closeable
 import okio.EOFException
 import okio.FileNotFoundException
+import okio.FileSystem
+import okio.ForwardingFileSystem
+import okio.ForwardingSource
 import okio.IOException
-import java.io.*
-import java.util.*
+import okio.Path
+import okio.Path.Companion.toOkioPath
+import okio.Sink
+import okio.Source
+import okio.blackholeSink
+import okio.buffer
+import okio.use
+import java.io.File
+import java.io.Flushable
 
 /**
  * 磁盘缓存
  */
 
 class DiskLruCacheHelper internal constructor(
-    internal val fileSystem: FileSystem,
+    fileSystem: FileSystem,
 
     /** Returns the directory where this cache stores its data. */
     val directory: File,
@@ -33,8 +41,21 @@ class DiskLruCacheHelper internal constructor(
     maxSize: Long,
 
     /** Used for asynchronous journal rebuilds. */
-    taskRunner: TaskRunner
+    taskRunner: TaskRunner,
 ) : Closeable, Flushable {
+    internal val fileSystem: FileSystem =
+        object : ForwardingFileSystem(fileSystem) {
+            override fun sink(
+                file: Path,
+                mustCreate: Boolean,
+            ): Sink {
+                file.parent?.let {
+                    createDirectories(it)
+                }
+                return super.sink(file, mustCreate)
+            }
+        }
+
     /** The maximum number of bytes that this cache should use to store its data. */
     @get:Synchronized
     @set:Synchronized
@@ -86,9 +107,9 @@ class DiskLruCacheHelper internal constructor(
      * compaction; that file should be deleted if it exists when the cache is opened.
      */
 
-    private val journalFile: File
-    private val journalFileTmp: File
-    private val journalFileBackup: File
+    private val journalFile: Path
+    private val journalFileTmp: Path
+    private val journalFileBackup: Path
     private var size: Long = 0L
     private var journalWriter: BufferedSink? = null
     internal val lruEntries = LinkedHashMap<String, Entry>(0, 0.75f, true)
@@ -141,10 +162,9 @@ class DiskLruCacheHelper internal constructor(
     init {
         require(maxSize > 0L) { "maxSize <= 0" }
         require(valueCount > 0) { "valueCount <= 0" }
-
-        this.journalFile = File(directory, JOURNAL_FILE)
-        this.journalFileTmp = File(directory, JOURNAL_FILE_TEMP)
-        this.journalFileBackup = File(directory, JOURNAL_FILE_BACKUP)
+        this.journalFile = directory.toOkioPath().div(JOURNAL_FILE)
+        this.journalFileTmp = directory.toOkioPath().div(JOURNAL_FILE_TEMP)
+        this.journalFileBackup = directory.toOkioPath().div(JOURNAL_FILE_BACKUP)
     }
 
     @Synchronized
@@ -164,7 +184,7 @@ class DiskLruCacheHelper internal constructor(
             if (fileSystem.exists(journalFile)) {
                 fileSystem.delete(journalFileBackup)
             } else {
-                fileSystem.rename(journalFileBackup, journalFile)
+                fileSystem.atomicMove(journalFileBackup, journalFile)
             }
         }
 
@@ -353,9 +373,9 @@ class DiskLruCacheHelper internal constructor(
         }
 
         if (fileSystem.exists(journalFile)) {
-            fileSystem.rename(journalFile, journalFileBackup)
+            fileSystem.atomicMove(journalFile, journalFileBackup)
         }
-        fileSystem.rename(journalFileTmp, journalFile)
+        fileSystem.atomicMove(journalFileTmp, journalFile)
         fileSystem.delete(journalFileBackup)
 
         journalWriter = newJournalWriter()
@@ -481,9 +501,9 @@ class DiskLruCacheHelper internal constructor(
             if (success && !entry.zombie) {
                 if (fileSystem.exists(dirty)) {
                     val clean = entry.cleanFiles[i]
-                    fileSystem.rename(dirty, clean)
+                    fileSystem.atomicMove(dirty, clean)
                     val oldLength = entry.lengths[i]
-                    val newLength = fileSystem.size(clean)
+                    val newLength = fileSystem.metadata(clean).size ?: 0
                     entry.lengths[i] = newLength
                     size = size - oldLength + newLength
                 }
@@ -664,7 +684,7 @@ class DiskLruCacheHelper internal constructor(
     @Throws(IOException::class)
     fun delete() {
         close()
-        fileSystem.deleteContents(directory)
+        fileSystem.deleteContents(directory.toOkioPath())
     }
 
     /**
@@ -756,7 +776,7 @@ class DiskLruCacheHelper internal constructor(
         private val key: String,
         private val sequenceNumber: Long,
         private val sources: List<Source>,
-        private val lengths: LongArray
+        private val lengths: LongArray,
     ) : Closeable {
         fun key(): String = key
 
@@ -880,13 +900,13 @@ class DiskLruCacheHelper internal constructor(
     }
 
     internal inner class Entry internal constructor(
-        internal val key: String
+        internal val key: String,
     ) {
 
         /** Lengths of this entry's files. */
         internal val lengths: LongArray = LongArray(valueCount)
-        internal val cleanFiles = mutableListOf<File>()
-        internal val dirtyFiles = mutableListOf<File>()
+        internal val cleanFiles = mutableListOf<Path>()
+        internal val dirtyFiles = mutableListOf<Path>()
 
         /** True if this entry has ever been published. */
         internal var readable: Boolean = false
@@ -915,9 +935,9 @@ class DiskLruCacheHelper internal constructor(
             val truncateTo = fileBuilder.length
             for (i in 0 until valueCount) {
                 fileBuilder.append(i)
-                cleanFiles += File(directory, fileBuilder.toString())
+                cleanFiles += directory.toOkioPath().div(fileBuilder.toString())
                 fileBuilder.append(".tmp")
-                dirtyFiles += File(directory, fileBuilder.toString())
+                dirtyFiles += directory.toOkioPath().div(fileBuilder.toString())
                 fileBuilder.setLength(truncateTo)
             }
         }
@@ -1042,5 +1062,43 @@ class DiskLruCacheHelper internal constructor(
 
         @JvmField
         val READ = "READ"
+    }
+
+    internal fun FileSystem.isCivilized(file: Path): Boolean {
+        sink(file).use {
+            try {
+                delete(file)
+                return true
+            } catch (_: IOException) {
+            }
+        }
+        delete(file)
+        return false
+    }
+
+    internal fun FileSystem.deleteContents(directory: Path) {
+        var exception: IOException? = null
+        val files =
+            try {
+                list(directory)
+            } catch (fnfe: FileNotFoundException) {
+                return
+            }
+        for (file in files) {
+            try {
+                if (metadata(file).isDirectory) {
+                    deleteContents(file)
+                }
+
+                delete(file)
+            } catch (ioe: IOException) {
+                if (exception == null) {
+                    exception = ioe
+                }
+            }
+        }
+        if (exception != null) {
+            throw exception
+        }
     }
 }

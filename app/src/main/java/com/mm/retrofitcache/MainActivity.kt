@@ -12,16 +12,15 @@ import com.mm.http.cache.CacheHelper
 import com.mm.retrofitcache.databinding.ActivityMainBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import java.text.SimpleDateFormat
-import java.util.Date
 
 class MainActivity : AppCompatActivity() {
-    val tag = "MainActivity"
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val binding = ActivityMainBinding.inflate(layoutInflater)
@@ -29,9 +28,8 @@ class MainActivity : AppCompatActivity() {
         binding.input.setSelection(binding.input.text.length)
         val retrofit = createCache()
         val service = retrofit.create(MyService::class.java)
-        val myService = createRetrofit().create<MyService>(MyService::class.java)
         binding.button.setOnClickListener {
-            GlobalScope.launch(Dispatchers.Main) {
+            MainScope().launch {
                 val user2 = service.getUser2(binding.input.text.toString())
                 binding.text.text = user2.toString()
                 binding.time.text = refreshTime()
@@ -39,7 +37,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         binding.button2.setOnClickListener {
-            GlobalScope.launch(Dispatchers.Main) {
+            MainScope().launch(Dispatchers.Main) {
                 val user3 = service.getUser3(binding.input.text.toString())
                 if (user3.isSuccessful) {
                     binding.text.text = user3.body().toString()
@@ -51,7 +49,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         binding.flow.setOnClickListener {
-            GlobalScope.launch(Dispatchers.Main) {
+            MainScope().launch(Dispatchers.Main) {
                 service.getUser(binding.input.text.toString()).asCallFlow().collect { user ->
                     binding.text.text = user.toString()
                     binding.time.text = refreshTime()
@@ -70,6 +68,7 @@ class MainActivity : AppCompatActivity() {
     private fun createCache(): RetrofitCache {
         val cacheHelper = CacheHelper(cacheDir, Long.MAX_VALUE)
         return RetrofitCache.Builder()
+            .cache(cacheHelper)
             .addCacheConverterFactory(CacheConvertFactory())
             .addResponseConverterFactory(object : ResponseConverter.Factory() {
             }).addHostInterceptor(object : DynamicHostInterceptor {

@@ -10,7 +10,6 @@ import okhttp3.MediaType
 import okhttp3.Protocol
 import okhttp3.Request
 import okhttp3.ResponseBody
-import okhttp3.internal.EMPTY_RESPONSE
 import okio.Buffer
 import okio.BufferedSource
 import okio.ForwardingSource
@@ -32,7 +31,7 @@ class HttpCacheCall<T> internal constructor(
     private val responseBodyConverter: Converter<ResponseBody, T>,
     private val cacheConverter: CacheConverter<T>,
     private val responseConverter: ResponseConverter<T>?,
-    retrofitCache: RetrofitCache
+    retrofitCache: RetrofitCache,
 ) : retrofit2.Call<T> {
 
     private val cacheHelper: CacheHelper? = retrofitCache.cacheHelper
@@ -217,7 +216,10 @@ class HttpCacheCall<T> internal constructor(
                 .message("Unsatisfiable Request (only-if-cached)")
                 .body(EMPTY_RESPONSE).build()
             val responseBody = rawResponse.body
-            val noContentResponseBody = NoContentResponseBody(responseBody?.contentType(), responseBody?.contentLength() ?: -1)
+            val noContentResponseBody = NoContentResponseBody(
+                responseBody?.contentType(),
+                responseBody?.contentLength() ?: -1
+            )
             return Response.error(HttpURLConnection.HTTP_GATEWAY_TIMEOUT, noContentResponseBody)
         }
         val rawBody = rawResponse.body
@@ -268,7 +270,14 @@ class HttpCacheCall<T> internal constructor(
     }
 
     override fun clone(): retrofit2.Call<T> {
-        return HttpCacheCall(requestFactory, rawCall, responseBodyConverter, cacheConverter, responseConverter, retrofit)
+        return HttpCacheCall(
+            requestFactory,
+            rawCall,
+            responseBodyConverter,
+            cacheConverter,
+            responseConverter,
+            retrofit
+        )
     }
 
     override fun request(): Request {
@@ -283,7 +292,10 @@ class HttpCacheCall<T> internal constructor(
         }
     }
 
-    internal class NoContentResponseBody(private val contentType: MediaType?, private val contentLength: Long) : ResponseBody() {
+    internal class NoContentResponseBody(
+        private val contentType: MediaType?,
+        private val contentLength: Long,
+    ) : ResponseBody() {
         override fun contentType(): MediaType? {
             return contentType
         }
@@ -297,7 +309,8 @@ class HttpCacheCall<T> internal constructor(
         }
     }
 
-    internal class ExceptionCatchingResponseBody(private val delegate: ResponseBody) : ResponseBody() {
+    internal class ExceptionCatchingResponseBody(private val delegate: ResponseBody) :
+        ResponseBody() {
         private val delegateSource: BufferedSource
         var thrownException: IOException? = null
 

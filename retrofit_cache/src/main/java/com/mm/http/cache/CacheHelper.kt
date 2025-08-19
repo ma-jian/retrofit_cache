@@ -2,20 +2,38 @@ package com.mm.http.cache
 
 import android.text.TextUtils
 import com.google.gson.Gson
-import okhttp3.*
+import com.mm.http.EMPTY_HEADERS
+import okhttp3.CipherSuite
+import okhttp3.FormBody
+import okhttp3.Handshake
+import okhttp3.Headers
+import okhttp3.MediaType
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.internal.EMPTY_HEADERS
+import okhttp3.Protocol
+import okhttp3.Request
+import okhttp3.RequestBody
+import okhttp3.Response
+import okhttp3.ResponseBody
+import okhttp3.TlsVersion
 import okhttp3.internal.cache.CacheRequest
 import okhttp3.internal.closeQuietly
 import okhttp3.internal.concurrent.TaskRunner
 import okhttp3.internal.http.StatusLine
-import okhttp3.internal.io.FileSystem
 import okhttp3.internal.platform.Platform
 import okhttp3.internal.toLongOrDefault
-import okio.*
+import okio.Buffer
+import okio.BufferedSink
+import okio.BufferedSource
 import okio.ByteString.Companion.decodeBase64
 import okio.ByteString.Companion.encodeUtf8
 import okio.ByteString.Companion.toByteString
+import okio.FileSystem
+import okio.ForwardingSink
+import okio.ForwardingSource
+import okio.Sink
+import okio.Source
+import okio.buffer
+import okio.use
 import java.io.Closeable
 import java.io.File
 import java.io.Flushable
@@ -25,7 +43,7 @@ import java.security.cert.Certificate
 import java.security.cert.CertificateEncodingException
 import java.security.cert.CertificateException
 import java.security.cert.CertificateFactory
-import java.util.*
+import java.util.TreeSet
 
 /**
  * 缓存存储数据
@@ -34,7 +52,7 @@ import java.util.*
 class CacheHelper internal constructor(
     private val directory: File,
     private val maxSize: Long,
-    private val fileSystem: FileSystem
+    private val fileSystem: FileSystem,
 ) : Closeable, Flushable {
     internal val cache = DiskLruCacheHelper(
         fileSystem = fileSystem,
@@ -68,7 +86,7 @@ class CacheHelper internal constructor(
 
         val response = entry.response(snapshot)
         if (!entry.matches(request, response)) {
-            response.body?.closeQuietly()
+            response.body.closeQuietly()
             return null
         }
         return response
@@ -311,7 +329,8 @@ class CacheHelper internal constructor(
                 .method(requestMethod, body)
                 .headers(varyHeaders)
                 .build()
-            val responseHeaders = responseHeaders.newBuilder().add(CACHE_HEADER, "local_cache").build()
+            val responseHeaders =
+                responseHeaders.newBuilder().add(CACHE_HEADER, "local_cache").build()
             return Response.Builder()
                 .request(cacheRequest)
                 .protocol(protocol)
@@ -337,7 +356,7 @@ class CacheHelper internal constructor(
     private class CacheResponseBody(
         val snapshot: DiskLruCacheHelper.Snapshot,
         private val contentType: String?,
-        private val contentLength: String?
+        private val contentLength: String?,
     ) : ResponseBody() {
         private val bodySource: BufferedSource
 
@@ -360,7 +379,7 @@ class CacheHelper internal constructor(
     }
 
     private inner class RealCacheRequest(
-        private val editor: DiskLruCacheHelper.Editor
+        private val editor: DiskLruCacheHelper.Editor,
     ) : CacheRequest {
         private val cacheOut: Sink = editor.newSink(ENTRY_BODY)
         private val body: Sink
@@ -542,7 +561,7 @@ class CacheHelper internal constructor(
         fun varyMatches(
             cachedResponse: Response,
             cachedRequest: Headers,
-            newRequest: Request
+            newRequest: Request,
         ): Boolean {
             return newRequest.headers.varyFields().none {
                 cachedResponse.headers.values(it) != newRequest.headers(it)

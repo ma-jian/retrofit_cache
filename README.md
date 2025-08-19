@@ -3,7 +3,7 @@
 **一个注解实现对Retrofit框架的网络数据缓存**
 
 ```
-implementation 'io.github.ma-jian:retrofit-cache:1.2.0'
+implementation 'io.github.ma-jian:retrofit-cache:1.2.1'
 ```
 
 支持多种缓存逻辑
@@ -17,10 +17,14 @@ implementation 'io.github.ma-jian:retrofit-cache:1.2.0'
 
 ### **CHANGELOG**
 
+#### v1.2.1
+1. 最低支持retrofit：2.10.0
+2. 修复okhttp:5.0.0版本的兼容问题
+
 #### v1.2.0
 1. 新增对suspend函数的支持
 2. 完全兼容retrofit原生支持的返回值类型
-3. 最高支持retrofit：2.10.0 okhttp：4.12.0
+3. 最低支持retrofit：2.10.0
 4. 修复bug
 
 #### v1.1.1
@@ -28,10 +32,10 @@ implementation 'io.github.ma-jian:retrofit-cache:1.2.0'
 
 #### v1.1
 
-1. 新增注解[HOST](cache/src/main/java/com/mm/http/HOST.kt) 支持多baseUrl设置，可自定义动态切换
+1. 新增注解[HOST](retrofit_cache/src/main/java/com/mm/http/HOST.kt) 支持多baseUrl设置，可自定义动态切换
 2. 新增支持自定义解析数据，方便对Response数据进行统一处理
-3. 新增注解[IgnoreInterceptor](cache/src/main/java/com/mm/http/IgnoreInterceptor.kt) 可用于忽略拦截器进入缓存预处理逻辑
-4. 修复[RetrofitCache](cache/src/main/java/com/mm/http/RetrofitCache.kt) 中newBuilder()无法正确使用的问题
+3. 新增注解[IgnoreInterceptor](retrofit_cache/src/main/java/com/mm/http/IgnoreInterceptor.kt) 可用于忽略拦截器进入缓存预处理逻辑
+4. 修复[RetrofitCache](retrofit_cache/src/main/java/com/mm/http/RetrofitCache.kt) 中newBuilder()无法正确使用的问题
 5. 修改其他已知的bug
 6. HTTP网络扩展新增支持返回Result<T>结果
 7. 移除cache路径必须设置的限制; 缓存路径为null时直接返回原始Retrofit逻辑

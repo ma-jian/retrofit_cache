@@ -1,8 +1,12 @@
 package com.mm.http
 
 import com.mm.http.cache.CacheHelper
-import okhttp3.*
-import okhttp3.internal.EMPTY_RESPONSE
+import okhttp3.Call
+import okhttp3.Connection
+import okhttp3.Interceptor
+import okhttp3.Protocol
+import okhttp3.Request
+import okhttp3.Response
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.util.concurrent.TimeUnit
@@ -18,7 +22,7 @@ class RealRequestInterceptorChain internal constructor(
     private val request: Request,
     private val connectTimeoutMillis: Int,
     private val readTimeoutMillis: Int,
-    private val writeTimeoutMillis: Int
+    private val writeTimeoutMillis: Int,
 ) : Interceptor.Chain {
     override fun call(): Call {
         return call
@@ -80,7 +84,7 @@ class RealRequestInterceptorChain internal constructor(
 
     private fun copy(
         index: Int, request: Request,
-        connectTimeoutMillis: Int, readTimeoutMillis: Int, writeTimeoutMillis: Int
+        connectTimeoutMillis: Int, readTimeoutMillis: Int, writeTimeoutMillis: Int,
     ): RealRequestInterceptorChain {
         return RealRequestInterceptorChain(
             call,
